@@ -8,6 +8,22 @@ class Ship(object):
         self.x = 0
         self.y = 0
 
+    def move(self, direction):
+        if direction == "N":
+            self.y -= 1
+
+        if direction == "E":
+            self.x -= 1
+
+        if direction == "S":
+            self.y += 1
+
+        if direction == "W":
+            self.x += 1
+
+    def __str__(self):
+        return "x: {} / y: {}".format(self.x, self.y)
+
 
 class Cell(object):
     def __init__(self, x, y, is_island):
@@ -110,5 +126,6 @@ choose_starting_cell(
 # game loop
 while True:
     turn_data = read_turn_data()
-
+    print_log(str(my_ship))
+    my_ship.move("N")
     print("MOVE N TORPEDO")
