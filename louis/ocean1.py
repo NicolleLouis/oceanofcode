@@ -32,18 +32,33 @@ class Cell(object):
         self.is_island = is_island
         self.is_visited = False
 
+    def has_been_visited(self):
+        self.is_visited = True
+
+    def is_valid(self):
+        return not (self.is_island and self.is_visited)
+
     def __str__(self):
         return "x" if self.is_island else "."
 
 
 class Board(object):
     def __init__(self, height, width, lines):
+        self.height = height
+        self.width = width
         self.map = []
         for y, line in enumerate(lines):
             cell_line = []
             for x, char in enumerate(line):
                 cell_line.append(Cell(x, y, char == "x"))
             self.map.append(cell_line)
+
+    def is_position_valid(self, x, y):
+        if x < 0 or x >= self.width:
+            return False
+        if y < 0 or y >= self.height:
+            return False
+        return self.get_cell(x, y).is_valid()
 
     def get_cell(self, x, y):
         return self.map[y][x]
@@ -95,13 +110,13 @@ def is_cell_island(x, y, lines):
     return lines[y][x] == "x"
 
 
-def choose_starting_cell(ship, lines, width, height):
-    x = random.randint(0, width - 1)
-    y = random.randint(0, height - 1)
-    while is_cell_island(x, y, lines):
-        print_log("{} {} {}".format(x, y, is_cell_island(x, y, lines)))
-        x = random.randint(0, width - 1)
-        y = random.randint(0, height - 1)
+def choose_starting_cell(ship, board):
+    x = random.randint(0, board.width - 1)
+    y = random.randint(0, board.height - 1)
+    while not board.is_position_valid(x, y):
+        print_log("{} {}".format(x, y))
+        x = random.randint(0, board.width - 1)
+        y = random.randint(0, board.height - 1)
     ship.x = x
     ship.y = y
     print("{} {}".format(ship.x, ship.y))
@@ -118,14 +133,11 @@ board = Board(
 my_ship = Ship()
 choose_starting_cell(
     ship=my_ship,
-    lines=global_data["lines"],
-    width=global_data["width"],
-    height=global_data["height"],
+    board=board
 )
 
 # game loop
 while True:
     turn_data = read_turn_data()
-    print_log(str(my_ship))
     my_ship.move("N")
     print("MOVE N TORPEDO")
