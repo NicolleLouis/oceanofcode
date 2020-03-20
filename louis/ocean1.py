@@ -9,6 +9,37 @@ class Ship(object):
         self.y = 0
 
 
+class Cell(object):
+    def __init__(self, x, y, is_island):
+        self.x = x
+        self.y = y
+        self.is_island = is_island
+        self.is_visited = False
+
+    def __str__(self):
+        return "x" if self.is_island else "."
+
+
+class Board(object):
+    def __init__(self, height, width, lines):
+        self.map = []
+        for y, line in enumerate(lines):
+            cell_line = []
+            for x, char in enumerate(line):
+                cell_line.append(Cell(x, y, char == "x"))
+            self.map.append(cell_line)
+
+    def get_cell(self, x, y):
+        return self.map[y][x]
+
+    def print_board(self):
+        for line in self.map:
+            line_string = ""
+            for cell in line:
+                line_string += str(cell)
+            print_log(line_string)
+
+
 def print_log(log):
     print(log, file=sys.stderr)
 
@@ -62,6 +93,11 @@ def choose_starting_cell(ship, lines, width, height):
 
 # Read global input
 global_data = read_global_data()
+board = Board(
+    height=global_data["height"],
+    width=global_data["width"],
+    lines=global_data["lines"]
+)
 
 my_ship = Ship()
 choose_starting_cell(
