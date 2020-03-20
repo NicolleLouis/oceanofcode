@@ -1,5 +1,12 @@
 import sys
 import math
+import random
+
+
+class Ship(object):
+    def __init__(self):
+        self.x = 0
+        self.y = 0
 
 
 def print_log(log):
@@ -37,19 +44,22 @@ def read_global_data():
     }
 
 
-def choose_starting_cell(lines):
-    number_of_free_cell = 0
-    for line in lines:
-        number_of_free_cell += line.count('.')
-    print_log(number_of_free_cell)
+def choose_starting_cell(ship, lines, width, height):
+    ship.x = random.randint(0, width - 1)
+    ship.y = random.randint(0, height - 1)
+    print("{} {}".format(ship.x, ship.y))
 
 
+# Read global input
 global_data = read_global_data()
 
-choose_starting_cell(global_data["lines"])
-
-# Write an action using print
-# To debug: print("Debug messages...", file=sys.stderr)
+my_ship = Ship()
+choose_starting_cell(
+    ship=my_ship,
+    lines=global_data["lines"],
+    width=global_data["width"],
+    height=global_data["height"],
+)
 
 print_log("####### map #########")
 for line in global_data["lines"]:
