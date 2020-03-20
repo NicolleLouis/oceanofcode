@@ -2,6 +2,10 @@ import sys
 import math
 
 
+def print_log(log):
+    print(log, file=sys.stderr)
+
+
 def read_turn_data():
     x, y, my_life, opp_life, torpedo_cooldown, \
     sonar_cooldown, silence_cooldown, \
@@ -33,12 +37,23 @@ def read_global_data():
     }
 
 
+def choose_starting_cell(lines):
+    number_of_free_cell = 0
+    for line in lines:
+        number_of_free_cell += line.count('.')
+    print_log(number_of_free_cell)
+
+
 global_data = read_global_data()
+
+choose_starting_cell(global_data["lines"])
 
 # Write an action using print
 # To debug: print("Debug messages...", file=sys.stderr)
 
-print("7 7", file=sys.stderr)
+print_log("####### map #########")
+for line in global_data["lines"]:
+    print_log(line)
 
 # game loop
 while True:
