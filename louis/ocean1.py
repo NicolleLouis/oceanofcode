@@ -44,9 +44,19 @@ def read_global_data():
     }
 
 
+def is_cell_island(x, y, lines):
+    return lines[y][x] == "x"
+
+
 def choose_starting_cell(ship, lines, width, height):
-    ship.x = random.randint(0, width - 1)
-    ship.y = random.randint(0, height - 1)
+    x = random.randint(0, width - 1)
+    y = random.randint(0, height - 1)
+    while is_cell_island(x, y, lines):
+        print_log("{} {} {}".format(x, y, is_cell_island(x, y, lines)))
+        x = random.randint(0, width - 1)
+        y = random.randint(0, height - 1)
+    ship.x = x
+    ship.y = y
     print("{} {}".format(ship.x, ship.y))
 
 
@@ -60,10 +70,6 @@ choose_starting_cell(
     width=global_data["width"],
     height=global_data["height"],
 )
-
-print_log("####### map #########")
-for line in global_data["lines"]:
-    print_log(line)
 
 # game loop
 while True:
