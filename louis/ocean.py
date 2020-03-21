@@ -47,6 +47,7 @@ class Cell(object):
         self.position = position
         self.is_island = is_island
         self.is_visited = False
+        self.can_be_ennemy_start = not is_island
 
     def has_been_visited(self):
         self.is_visited = True
@@ -103,39 +104,73 @@ class Board(object):
             print_log(line_string)
 
 
-def print_log(log):
-    print(log, file=sys.stderr)
+class EnemyShip(object):
+    def __init__(self, height, width, lines):
+        self.delta_x = 0
+        self.delta_y = 0
+        self.board_potential_start = Board(
+            height=height,
+            width=width,
+            lines=lines
+        )
 
 
-def read_turn_data():
-    x, y, my_life, opp_life, torpedo_cooldown, \
-    sonar_cooldown, silence_cooldown, \
-    mine_cooldown = [int(i) for i in input().split()]
-    sonar_result = input()
-    opponent_orders = input()
-    return {
-        "x": x,
-        "y": y,
-        "my_life": my_life,
-        "opp_life": opp_life,
-        "torpedo_cooldown": torpedo_cooldown,
-        "sonar_cooldown": sonar_cooldown,
-        "silence_cooldown": silence_cooldown,
-        "sonar_result": sonar_result,
-        "opponent_orders": opponent_orders,
-    }
+class ServiceUtils:
+    @staticmethod
+    def print_log(log):
+        print(log, file=sys.stderr)
 
+    @staticmethod
+    def read_turn_data():
+        x, y, my_life, opp_life, torpedo_cooldown, \
+        sonar_cooldown, silence_cooldown, \
+        mine_cooldown = [int(i) for i in input().split()]
+        sonar_result = input()
+        opponent_orders = input()
+        return {
+            "x": x,
+            "y": y,
+            "my_life": my_life,
+            "opp_life": opp_life,
+            "torpedo_cooldown": torpedo_cooldown,
+            "sonar_cooldown": sonar_cooldown,
+            "silence_cooldown": silence_cooldown,
+            "sonar_result": sonar_result,
+            "opponent_orders": opponent_orders,
+        }
 
-def read_global_data():
-    width, height, my_id = [int(i) for i in input().split()]
-    lines = []
-    for i in range(height):
-        lines.append(input())
-    return {
-        "width": width,
-        "height": height,
-        "lines": lines
-    }
+    @staticmethod
+    def read_global_data():
+        width, height, my_id = [int(i) for i in input().split()]
+        lines = []
+        for i in range(height):
+            lines.append(input())
+        return {
+            "width": width,
+            "height": height,
+            "lines": lines
+        }
+
+    @classmethod
+    def init(cls):
+        global_data = cls.read_global_data()
+        board = Board(
+            height=global_data["height"],
+            width=global_data["width"],
+            lines=global_data["lines"]
+        )
+        ennemy_ship = EnemyShip(
+            height=global_data["height"],
+            width=global_data["width"],
+            lines=global_data["lines"]
+        )
+
+        my_ship = Ship()
+        choose_starting_cell(
+            ship=my_ship,
+            board=board
+        )
+        return global_data, board, ennemy_ship, my_ship
 
 
 def choose_starting_cell(ship, board):
@@ -184,23 +219,17 @@ def surface(board):
     print("SURFACE")
 
 
-# Read global input
-global_data = read_global_data()
-board = Board(
-    height=global_data["height"],
-    width=global_data["width"],
-    lines=global_data["lines"]
-)
-
-my_ship = Ship()
-choose_starting_cell(
-    ship=my_ship,
-    board=board
-)
+#################
+#################
+##### Main ######
+#################
+#################
+ServiceUtils = ServiceUtils()
+global_data, board, ennemy_ship, my_ship = ServiceUtils.init()
 
 # game loop
 while True:
-    turn_data = read_turn_data()
+    turn_data = ServiceUtils.read_turn_data()
     move_order = chose_movement_and_move(my_ship, board)
     if not move_order:
         surface(board)
