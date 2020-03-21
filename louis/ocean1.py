@@ -12,13 +12,13 @@ class Ship(object):
         if direction == "N":
             self.y -= 1
 
-        if direction == "E":
+        if direction == "W":
             self.x -= 1
 
         if direction == "S":
             self.y += 1
 
-        if direction == "W":
+        if direction == "E":
             self.x += 1
 
     def __str__(self):
@@ -36,7 +36,7 @@ class Cell(object):
         self.is_visited = True
 
     def is_valid(self):
-        return not (self.is_island and self.is_visited)
+        return not (self.is_island or self.is_visited)
 
     def __str__(self):
         return "x" if self.is_island else "."
