@@ -72,6 +72,7 @@ class Cell(object):
         self.is_visited = False
 
 
+
 class Board(object):
     def __init__(self, height, width, lines):
         self.height = height
@@ -111,18 +112,30 @@ class Board(object):
             line_string = ""
             for cell in line:
                 line_string += str(cell)
-            ServiceUtils().print_log(line_string)
+            ServiceUtils.print_log(line_string)
+
 
 
 class EnemyShip(object):
     def __init__(self, height, width, lines):
-        self.delta_x = 0
-        self.delta_y = 0
+        self.delta_position = Position(0, 0)
         self.board_potential_start = Board(
             height=height,
             width=width,
             lines=lines
         )
+
+    def read_opponent_order(self, opponent_order):
+        if opponent_order == "NA":
+            return
+        list_opponent_order = opponent_order.split("|")
+        move_order = OpponentOrder.get_move_order(list_opponent_order)
+        if not move_order:
+            self.delta_position = self.delta_position.add_direction(
+                OpponentOrder.get_direction_from_order(move_order)
+            )
+        ServiceUtils.print_log(str(list_opponent_order))
+
 
 
 class ServiceUtils:
@@ -212,6 +225,19 @@ class ServiceMovement:
         return move_order
 
 
+class OpponentOrder:
+    @staticmethod
+    def get_move_order(list_orders):
+        for order in list_orders:
+            if order.find("MOVE") > -1:
+                return order
+        return False
+
+    @staticmethod
+    def get_direction_from_order(move_order):
+        return move_order.replace("MOVE ", "")
+
+
 def surface(board):
     for x in range(board.width):
         for y in range(board.height):
@@ -224,13 +250,12 @@ def surface(board):
 ##### Main ######
 #################
 #################
-ServiceUtils = ServiceUtils()
-ServiceMovement = ServiceMovement()
 global_data, board, ennemy_ship, my_ship = ServiceUtils.init()
 
 # game loop
 while True:
     turn_data = ServiceUtils.read_turn_data()
+    ennemy_ship.read_opponent_order(turn_data["opponent_orders"])
     move_order = ServiceMovement.chose_movement_and_move(my_ship, board)
     if not move_order:
         surface(board)
