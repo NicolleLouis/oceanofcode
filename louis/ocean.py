@@ -1,5 +1,4 @@
 import sys
-import math
 import random
 
 directions = ["N", "W", "E", "S"]
@@ -39,6 +38,16 @@ class Ship(object):
     def get_position_after_move(self, direction):
         return self.position.add_direction(direction)
 
+    def choose_starting_cell(self, board):
+        x = random.randint(0, board.width - 1)
+        y = random.randint(0, board.height - 1)
+        random_position = Position(x, y)
+        while not board.is_position_valid_for_move(random_position):
+            random_position.x = random.randint(0, board.width - 1)
+            random_position.y = random.randint(0, board.height - 1)
+        self.position = random_position
+        print("{} {}".format(self.position.x, self.position.y))
+
     def __str__(self):
         return str(self.position)
 
@@ -48,6 +57,7 @@ class Cell(object):
         self.position = position
         self.is_island = is_island
         self.is_visited = False
+        self.can_be_ennemy_start = not is_island
 
     def has_been_visited(self):
         self.is_visited = True
@@ -57,6 +67,9 @@ class Cell(object):
 
     def __str__(self):
         return "x" if self.is_island else "."
+
+    def reset_visit(self):
+        self.is_visited = False
 
 
 class Board(object):
@@ -85,105 +98,141 @@ class Board(object):
     def get_cell(self, position):
         return self.map[position.y][position.x]
 
-    # def is_position_dead_end(self, x, y):
-    #     is_N_possible =
+    def is_position_dead_end(self, position):
+        available_direction = 0
+        for direction in directions:
+            new_position = position.add_direction(direction)
+            if self.is_position_valid_for_move(new_position):
+                available_direction += 1
+        return available_direction == 0
 
     def print_board(self):
         for line in self.map:
             line_string = ""
             for cell in line:
                 line_string += str(cell)
-            print_log(line_string)
+            ServiceUtils().print_log(line_string)
 
 
-def print_log(log):
-    print(log, file=sys.stderr)
+class EnemyShip(object):
+    def __init__(self, height, width, lines):
+        self.delta_x = 0
+        self.delta_y = 0
+        self.board_potential_start = Board(
+            height=height,
+            width=width,
+            lines=lines
+        )
 
 
-def read_turn_data():
-    x, y, my_life, opp_life, torpedo_cooldown, \
-    sonar_cooldown, silence_cooldown, \
-    mine_cooldown = [int(i) for i in input().split()]
-    sonar_result = input()
-    opponent_orders = input()
-    return {
-        "x": x,
-        "y": y,
-        "my_life": my_life,
-        "opp_life": opp_life,
-        "torpedo_cooldown": torpedo_cooldown,
-        "sonar_cooldown": sonar_cooldown,
-        "silence_cooldown": silence_cooldown,
-        "sonar_result": sonar_result,
-        "opponent_orders": opponent_orders,
-    }
+class ServiceUtils:
+    @staticmethod
+    def print_log(log):
+        print(log, file=sys.stderr)
+
+    @staticmethod
+    def read_turn_data():
+        x, y, my_life, opp_life, torpedo_cooldown, \
+        sonar_cooldown, silence_cooldown, \
+        mine_cooldown = [int(i) for i in input().split()]
+        sonar_result = input()
+        opponent_orders = input()
+        return {
+            "x": x,
+            "y": y,
+            "my_life": my_life,
+            "opp_life": opp_life,
+            "torpedo_cooldown": torpedo_cooldown,
+            "sonar_cooldown": sonar_cooldown,
+            "silence_cooldown": silence_cooldown,
+            "sonar_result": sonar_result,
+            "opponent_orders": opponent_orders,
+        }
+
+    @staticmethod
+    def read_global_data():
+        width, height, my_id = [int(i) for i in input().split()]
+        lines = []
+        for i in range(height):
+            lines.append(input())
+        return {
+            "width": width,
+            "height": height,
+            "lines": lines
+        }
+
+    @classmethod
+    def init(cls):
+        global_data = cls.read_global_data()
+        board = Board(
+            height=global_data["height"],
+            width=global_data["width"],
+            lines=global_data["lines"]
+        )
+        ennemy_ship = EnemyShip(
+            height=global_data["height"],
+            width=global_data["width"],
+            lines=global_data["lines"]
+        )
+
+        my_ship = Ship()
+        my_ship.choose_starting_cell(
+            board=board
+        )
+        return global_data, board, ennemy_ship, my_ship
 
 
-def read_global_data():
-    width, height, my_id = [int(i) for i in input().split()]
-    lines = []
-    for i in range(height):
-        lines.append(input())
-    return {
-        "width": width,
-        "height": height,
-        "lines": lines
-    }
+class ServiceMovement:
+    @staticmethod
+    def is_move_possible_in_direction(ship, direction, board):
+        next_position = ship.get_position_after_move(direction)
+        return board.is_position_valid_for_move(next_position)
+
+    @staticmethod
+    def move_my_ship(ship, direction, board):
+        board.get_cell(position=ship.position).has_been_visited()
+        ship.move(direction)
+        move_order = "MOVE {} TORPEDO".format(direction)
+        return move_order
+
+    @staticmethod
+    def random_turn(direction):
+        if direction in ["S", "N"]:
+            return random.choice(["E", "W"])
+        return random.choice(["S", "N"])
+
+    @classmethod
+    def chose_movement_and_move(cls, ship, board):
+        direction = ship.direction
+        while not cls.is_move_possible_in_direction(ship, direction, board):
+            if board.is_position_dead_end(ship.position):
+                return False
+            direction = cls.random_turn(ship.direction)
+        move_order = cls.move_my_ship(ship, direction, board)
+        return move_order
 
 
-def choose_starting_cell(ship, board):
-    x = random.randint(0, board.width - 1)
-    y = random.randint(0, board.height - 1)
-    random_position = Position(x, y)
-    while not board.is_position_valid_for_move(random_position):
-        random_position.x = random.randint(0, board.width - 1)
-        random_position.y = random.randint(0, board.height - 1)
-    ship.position = random_position
-    print("{} {}".format(ship.position.x, ship.position.y))
+def surface(board):
+    for x in range(board.width):
+        for y in range(board.height):
+            board.get_cell(Position(x=x, y=y)).reset_visit()
+    print("SURFACE")
 
 
-def is_move_possible_in_direction(ship, direction, board):
-    next_position = ship.get_position_after_move(direction)
-    return board.is_position_valid_for_move(next_position)
-
-
-def move_my_ship(ship, direction, board):
-    board.get_cell(position=ship.position).has_been_visited()
-    ship.move(direction)
-    move_order = "MOVE {} TORPEDO".format(direction)
-    return move_order
-
-
-def random_turn(direction):
-    if direction in ["S", "N"]:
-        return random.choice(["E", "W"])
-    return random.choice(["S", "N"])
-
-
-def chose_movement_and_move(ship, board):
-    direction = ship.direction
-    while not is_move_possible_in_direction(ship, direction, board):
-        direction = random_turn(ship.direction)
-    move_order = move_my_ship(ship, direction, board)
-    return move_order
-
-
-# Read global input
-global_data = read_global_data()
-board = Board(
-    height=global_data["height"],
-    width=global_data["width"],
-    lines=global_data["lines"]
-)
-
-my_ship = Ship()
-choose_starting_cell(
-    ship=my_ship,
-    board=board
-)
+#################
+#################
+##### Main ######
+#################
+#################
+ServiceUtils = ServiceUtils()
+ServiceMovement = ServiceMovement()
+global_data, board, ennemy_ship, my_ship = ServiceUtils.init()
 
 # game loop
 while True:
-    turn_data = read_turn_data()
-    order = chose_movement_and_move(my_ship, board)
-    print(order)
+    turn_data = ServiceUtils.read_turn_data()
+    move_order = ServiceMovement.chose_movement_and_move(my_ship, board)
+    if not move_order:
+        surface(board)
+    else:
+        print(move_order)
