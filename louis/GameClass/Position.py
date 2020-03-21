@@ -16,5 +16,11 @@ class Position(object):
         if direction == "E":
             return Position(self.x + 1, self.y)
 
+    def add_position(self, position):
+        return Position(
+            x=self.x + position.x,
+            y=self.y + position.y
+        )
+
     def __str__(self):
         return "x: {} / y: {}".format(self.x, self.y)
