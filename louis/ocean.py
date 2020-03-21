@@ -1,5 +1,4 @@
 import sys
-import math
 import random
 
 directions = ["N", "W", "E", "S"]
@@ -58,6 +57,9 @@ class Cell(object):
     def __str__(self):
         return "x" if self.is_island else "."
 
+    def reset_visit(self):
+        self.is_visited = False
+
 
 class Board(object):
     def __init__(self, height, width, lines):
@@ -85,8 +87,13 @@ class Board(object):
     def get_cell(self, position):
         return self.map[position.y][position.x]
 
-    # def is_position_dead_end(self, x, y):
-    #     is_N_possible =
+    def is_position_dead_end(self, position):
+        available_direction = 0
+        for direction in directions:
+            new_position = position.add_direction(direction)
+            if self.is_position_valid_for_move(new_position):
+                available_direction += 1
+        return available_direction == 0
 
     def print_board(self):
         for line in self.map:
@@ -163,9 +170,18 @@ def random_turn(direction):
 def chose_movement_and_move(ship, board):
     direction = ship.direction
     while not is_move_possible_in_direction(ship, direction, board):
+        if board.is_position_dead_end(ship.position):
+            return False
         direction = random_turn(ship.direction)
     move_order = move_my_ship(ship, direction, board)
     return move_order
+
+
+def surface(board):
+    for x in range(board.width):
+        for y in range(board.height):
+            board.get_cell(Position(x=x, y=y)).reset_visit()
+    print("SURFACE")
 
 
 # Read global input
@@ -185,5 +201,8 @@ choose_starting_cell(
 # game loop
 while True:
     turn_data = read_turn_data()
-    order = chose_movement_and_move(my_ship, board)
-    print(order)
+    move_order = chose_movement_and_move(my_ship, board)
+    if not move_order:
+        surface(board)
+    else:
+        print(move_order)
