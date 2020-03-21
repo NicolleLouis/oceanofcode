@@ -162,6 +162,11 @@ class Board(object):
                     can_be_position = self.get_cell(start_position).can_be_enemy_start
                     self.get_cell(current_position).can_be_enemy_position = can_be_position
 
+    def reset_is_visited(self):
+        for x in range(self.width):
+            for y in range(self.height):
+                self.get_cell(Position(x=x, y=y)).reset_visit()
+
     def print_potential_position_board(self):
         for line in self.map:
             line_string = ""
@@ -264,7 +269,7 @@ class ServiceMovement:
     def move_my_ship(ship, direction, board):
         board.get_cell(position=ship.position).has_been_visited()
         ship.move(direction)
-        move_order = "MOVE {} TORPEDO".format(direction)
+        move_order = ServiceOrder.create_move_order(direction)
         return move_order
 
     @staticmethod
@@ -282,6 +287,11 @@ class ServiceMovement:
             direction = cls.random_turn(ship.direction)
         move_order = cls.move_my_ship(ship, direction, board)
         return move_order
+
+    @staticmethod
+    def surface(board):
+        board.reset_is_visited()
+        return "SURFACE"
 
 
 class ServiceOrder:
@@ -319,13 +329,6 @@ class ServiceOrder:
         )
 
 
-def surface(board):
-    for x in range(board.width):
-        for y in range(board.height):
-            board.get_cell(Position(x=x, y=y)).reset_visit()
-    return "SURFACE"
-
-
 #################
 #################
 ##### Main ######
@@ -340,6 +343,6 @@ while True:
     move_order = ServiceMovement.chose_movement_and_move(my_ship, board)
     message_order = ServiceOrder.create_number_of_possible_position_order(ennemy_ship)
     if not move_order:
-        move_order = surface(board)
+        move_order = ServiceMovement.surface(board)
     orders = ServiceOrder.concatenate_order([move_order, message_order])
     ServiceOrder.display_order(orders)

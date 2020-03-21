@@ -30,3 +30,8 @@ class ServiceMovement:
             direction = cls.random_turn(ship.direction)
         move_order = cls.move_my_ship(ship, direction, board)
         return move_order
+
+    @staticmethod
+    def surface(board):
+        board.reset_is_visited()
+        return "SURFACE"

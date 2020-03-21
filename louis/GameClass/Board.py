@@ -77,6 +77,11 @@ class Board(object):
                     can_be_position = self.get_cell(start_position).can_be_enemy_start
                     self.get_cell(current_position).can_be_enemy_position = can_be_position
 
+    def reset_is_visited(self):
+        for x in range(self.width):
+            for y in range(self.height):
+                self.get_cell(Position(x=x, y=y)).reset_visit()
+
     def print_potential_position_board(self):
         for line in self.map:
             line_string = ""

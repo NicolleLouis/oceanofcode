@@ -2,13 +2,6 @@ from louis.GameClass import Position
 from louis.Service import ServiceUtils, ServiceMovement, ServiceOrder
 
 
-def surface(board):
-    for x in range(board.width):
-        for y in range(board.height):
-            board.get_cell(Position(x=x, y=y)).reset_visit()
-    return "SURFACE"
-
-
 #################
 #################
 ##### Main ######
@@ -23,6 +16,6 @@ while True:
     move_order = ServiceMovement.chose_movement_and_move(my_ship, board)
     message_order = ServiceOrder.create_number_of_possible_position_order(ennemy_ship)
     if not move_order:
-        move_order = surface(board)
+        move_order = ServiceMovement.surface(board)
     orders = ServiceOrder.concatenate_order([move_order, message_order])
     ServiceOrder.display_order(orders)
