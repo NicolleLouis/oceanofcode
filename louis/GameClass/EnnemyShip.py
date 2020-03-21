@@ -1,5 +1,5 @@
 from louis.GameClass import Position, Board
-from louis.Service import OpponentOrder, ServiceUtils
+from louis.Service import ServiceOrder, ServiceUtils
 
 
 class EnemyShip(object):
@@ -15,11 +15,10 @@ class EnemyShip(object):
         if opponent_order == "NA":
             return
         list_opponent_order = opponent_order.split("|")
-        move_order = OpponentOrder.get_move_order(list_opponent_order)
+        move_order = ServiceOrder.get_move_order(list_opponent_order)
         if move_order:
             self.delta_position = self.delta_position.add_direction(
-                OpponentOrder.get_direction_from_order(move_order)
+                ServiceOrder.get_direction_from_order(move_order)
             )
         self.enemy_board.update_enemy_start_position(self.delta_position)
         self.enemy_board.update_enemy_current_position(self.delta_position)
-        self.enemy_board.print_potential_position_board()

@@ -1,4 +1,6 @@
 import random
+from louis.Service import ServiceOrder
+
 
 class ServiceMovement:
     @staticmethod
@@ -10,7 +12,7 @@ class ServiceMovement:
     def move_my_ship(ship, direction, board):
         board.get_cell(position=ship.position).has_been_visited()
         ship.move(direction)
-        move_order = "MOVE {} TORPEDO".format(direction)
+        move_order = ServiceOrder.create_move_order(direction)
         return move_order
 
     @staticmethod

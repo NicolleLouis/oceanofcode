@@ -175,14 +175,13 @@ class EnemyShip(object):
         if opponent_order == "NA":
             return
         list_opponent_order = opponent_order.split("|")
-        move_order = OpponentOrder.get_move_order(list_opponent_order)
+        move_order = ServiceOrder.get_move_order(list_opponent_order)
         if move_order:
             self.delta_position = self.delta_position.add_direction(
-                OpponentOrder.get_direction_from_order(move_order)
+                ServiceOrder.get_direction_from_order(move_order)
             )
         self.enemy_board.update_enemy_start_position(self.delta_position)
         self.enemy_board.update_enemy_current_position(self.delta_position)
-        self.enemy_board.print_potential_position_board()
 
 
 class ServiceUtils:
@@ -272,7 +271,7 @@ class ServiceMovement:
         return move_order
 
 
-class OpponentOrder:
+class ServiceOrder:
     @staticmethod
     def get_move_order(list_orders):
         for order in list_orders:
@@ -284,12 +283,28 @@ class OpponentOrder:
     def get_direction_from_order(move_order):
         return move_order.replace("MOVE ", "")
 
+    @staticmethod
+    def concatenate_order(list_orders):
+        return "|".join(list_orders)
+
+    @staticmethod
+    def display_order(order):
+        print(order)
+
+    @staticmethod
+    def create_move_order(direction):
+        return "MOVE {} TORPEDO".format(direction)
+
+    @staticmethod
+    def create_msg_order(msg):
+        return "MSG {}".format(msg)
+
 
 def surface(board):
     for x in range(board.width):
         for y in range(board.height):
             board.get_cell(Position(x=x, y=y)).reset_visit()
-    print("SURFACE")
+    return "SURFACE"
 
 
 #################
@@ -304,7 +319,8 @@ while True:
     turn_data = ServiceUtils.read_turn_data()
     ennemy_ship.read_opponent_order(turn_data["opponent_orders"])
     move_order = ServiceMovement.chose_movement_and_move(my_ship, board)
+    message_order = ServiceOrder.create_msg_order("Test")
     if not move_order:
-        surface(board)
-    else:
-        print(move_order)
+        move_order = surface(board)
+    orders = ServiceOrder.concatenate_order([move_order, message_order])
+    ServiceOrder.display_order(orders)
