@@ -12,7 +12,8 @@ class ServiceOrder:
 
     @staticmethod
     def concatenate_order(list_orders):
-        return "|".join(list_orders)
+        filtered_list = list(filter(lambda order: order, list_orders))
+        return "|".join(filtered_list)
 
     @staticmethod
     def display_order(order):

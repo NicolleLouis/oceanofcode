@@ -3,6 +3,9 @@ class Position(object):
         self.x = x
         self.y = y
 
+    def get_distance(self, position):
+        return abs(self.x - position.x) + abs(self.y - position.y)
+
     def add_direction(self, direction):
         if direction == "N":
             return Position(self.x, self.y - 1)
