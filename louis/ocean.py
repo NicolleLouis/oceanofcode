@@ -130,11 +130,10 @@ class EnemyShip(object):
             return
         list_opponent_order = opponent_order.split("|")
         move_order = OpponentOrder.get_move_order(list_opponent_order)
-        if not move_order:
+        if move_order:
             self.delta_position = self.delta_position.add_direction(
                 OpponentOrder.get_direction_from_order(move_order)
             )
-        ServiceUtils.print_log(str(list_opponent_order))
 
 
 
