@@ -3,40 +3,57 @@ import math
 import random
 
 
-class Ship(object):
-    def __init__(self):
-        self.x = 0
-        self.y = 0
+class Position(object):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
 
-    def move(self, direction):
+    def add_direction(self, direction):
         if direction == "N":
-            self.y -= 1
-
-        if direction == "E":
-            self.x -= 1
-
-        if direction == "S":
-            self.y += 1
+            return Position(self.x, self.y - 1)
 
         if direction == "W":
-            self.x += 1
+            return Position(self.x - 1, self.y)
+
+        if direction == "S":
+            return Position(self.x, self.y + 1)
+
+        if direction == "E":
+            return Position(self.x + 1, self.y)
 
     def __str__(self):
         return "x: {} / y: {}".format(self.x, self.y)
 
 
+class Ship(object):
+    directions = ["N", "W", "E", "S"]
+
+    def __init__(self):
+        self.position = Position(0, 0)
+        self.direction = "N"
+
+    def move(self, direction):
+        self.direction = direction
+        self.position = self.position.add_direction(direction)
+
+    def get_position_after_move(self, direction):
+        return self.position.add_direction(direction)
+
+    def __str__(self):
+        return str(self.position)
+
+
 class Cell(object):
-    def __init__(self, x, y, is_island):
-        self.x = x
-        self.y = y
+    def __init__(self, position, is_island):
+        self.position = position
         self.is_island = is_island
         self.is_visited = False
 
     def has_been_visited(self):
         self.is_visited = True
 
-    def is_valid(self):
-        return not (self.is_island and self.is_visited)
+    def is_valid_for_move(self):
+        return not (self.is_island or self.is_visited)
 
     def __str__(self):
         return "x" if self.is_island else "."
@@ -50,18 +67,21 @@ class Board(object):
         for y, line in enumerate(lines):
             cell_line = []
             for x, char in enumerate(line):
-                cell_line.append(Cell(x, y, char == "x"))
+                cell_line.append(Cell(Position(x, y), char == "x"))
             self.map.append(cell_line)
 
-    def is_position_valid(self, x, y):
-        if x < 0 or x >= self.width:
+    def is_position_valid_for_move(self, position):
+        if position.x < 0 or position.x >= self.width:
             return False
-        if y < 0 or y >= self.height:
+        if position.y < 0 or position.y >= self.height:
             return False
-        return self.get_cell(x, y).is_valid()
+        return self.get_cell(position).is_valid_for_move()
 
-    def get_cell(self, x, y):
-        return self.map[y][x]
+    def get_cell(self, position):
+        return self.map[position.y][position.x]
+
+    # def is_position_dead_end(self, x, y):
+    #     is_N_possible =
 
     def print_board(self):
         for line in self.map:
@@ -106,20 +126,41 @@ def read_global_data():
     }
 
 
-def is_cell_island(x, y, lines):
-    return lines[y][x] == "x"
-
-
 def choose_starting_cell(ship, board):
     x = random.randint(0, board.width - 1)
     y = random.randint(0, board.height - 1)
-    while not board.is_position_valid(x, y):
-        print_log("{} {}".format(x, y))
-        x = random.randint(0, board.width - 1)
-        y = random.randint(0, board.height - 1)
-    ship.x = x
-    ship.y = y
-    print("{} {}".format(ship.x, ship.y))
+    random_position = Position(x, y)
+    while not board.is_position_valid_for_move(random_position):
+        random_position.x = random.randint(0, board.width - 1)
+        random_position.y = random.randint(0, board.height - 1)
+    ship.position = random_position
+    print("{} {}".format(ship.position.x, ship.position.y))
+
+
+def is_move_possible_in_direction(ship, direction, board):
+    next_position = ship.get_position_after_move(direction)
+    return board.is_position_valid_for_move(next_position)
+
+
+def move_my_ship(ship, direction, board):
+    board.get_cell(position=ship.position).has_been_visited()
+    ship.move(direction)
+    move_order = "MOVE {}".format(direction)
+    return move_order
+
+
+def random_turn(direction):
+    if direction in ["S", "N"]:
+        return random.choice(["E", "W"])
+    return random.choice(["S", "N"])
+
+
+def chose_movement_and_move(ship, board):
+    direction = ship.direction
+    while not is_move_possible_in_direction(ship, direction, board):
+        direction = random_turn(ship.direction)
+    move_order = move_my_ship(ship, direction, board)
+    return move_order
 
 
 # Read global input
@@ -139,5 +180,6 @@ choose_starting_cell(
 # game loop
 while True:
     turn_data = read_turn_data()
-    my_ship.move("N")
-    print("MOVE N TORPEDO")
+    move_order = chose_movement_and_move(my_ship, board)
+    turn_order = "{} TORPEDO".format(move_order)
+    print(turn_order)
