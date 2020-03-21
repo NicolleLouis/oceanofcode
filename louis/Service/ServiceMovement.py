@@ -25,7 +25,7 @@ class ServiceMovement:
     def chose_movement_and_move(cls, ship, board):
         if board.is_position_dead_end(ship.position):
             return False
-        direction = ship.direction
+        direction = cls.random_direction()
         while not cls.is_move_possible_in_direction(ship, direction, board):
             direction = cls.random_direction()
         move_order = cls.move_my_ship(ship, direction, board)
