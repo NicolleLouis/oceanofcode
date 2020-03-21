@@ -38,6 +38,16 @@ class Ship(object):
     def get_position_after_move(self, direction):
         return self.position.add_direction(direction)
 
+    def choose_starting_cell(self, board):
+        x = random.randint(0, board.width - 1)
+        y = random.randint(0, board.height - 1)
+        random_position = Position(x, y)
+        while not board.is_position_valid_for_move(random_position):
+            random_position.x = random.randint(0, board.width - 1)
+            random_position.y = random.randint(0, board.height - 1)
+        self.position = random_position
+        print("{} {}".format(self.position.x, self.position.y))
+
     def __str__(self):
         return str(self.position)
 
@@ -101,7 +111,7 @@ class Board(object):
             line_string = ""
             for cell in line:
                 line_string += str(cell)
-            print_log(line_string)
+            ServiceUtils().print_log(line_string)
 
 
 class EnemyShip(object):
@@ -166,50 +176,40 @@ class ServiceUtils:
         )
 
         my_ship = Ship()
-        choose_starting_cell(
-            ship=my_ship,
+        my_ship.choose_starting_cell(
             board=board
         )
         return global_data, board, ennemy_ship, my_ship
 
 
-def choose_starting_cell(ship, board):
-    x = random.randint(0, board.width - 1)
-    y = random.randint(0, board.height - 1)
-    random_position = Position(x, y)
-    while not board.is_position_valid_for_move(random_position):
-        random_position.x = random.randint(0, board.width - 1)
-        random_position.y = random.randint(0, board.height - 1)
-    ship.position = random_position
-    print("{} {}".format(ship.position.x, ship.position.y))
+class ServiceMovement:
+    @staticmethod
+    def is_move_possible_in_direction(ship, direction, board):
+        next_position = ship.get_position_after_move(direction)
+        return board.is_position_valid_for_move(next_position)
 
+    @staticmethod
+    def move_my_ship(ship, direction, board):
+        board.get_cell(position=ship.position).has_been_visited()
+        ship.move(direction)
+        move_order = "MOVE {} TORPEDO".format(direction)
+        return move_order
 
-def is_move_possible_in_direction(ship, direction, board):
-    next_position = ship.get_position_after_move(direction)
-    return board.is_position_valid_for_move(next_position)
+    @staticmethod
+    def random_turn(direction):
+        if direction in ["S", "N"]:
+            return random.choice(["E", "W"])
+        return random.choice(["S", "N"])
 
-
-def move_my_ship(ship, direction, board):
-    board.get_cell(position=ship.position).has_been_visited()
-    ship.move(direction)
-    move_order = "MOVE {} TORPEDO".format(direction)
-    return move_order
-
-
-def random_turn(direction):
-    if direction in ["S", "N"]:
-        return random.choice(["E", "W"])
-    return random.choice(["S", "N"])
-
-
-def chose_movement_and_move(ship, board):
-    direction = ship.direction
-    while not is_move_possible_in_direction(ship, direction, board):
-        if board.is_position_dead_end(ship.position):
-            return False
-        direction = random_turn(ship.direction)
-    move_order = move_my_ship(ship, direction, board)
-    return move_order
+    @classmethod
+    def chose_movement_and_move(cls, ship, board):
+        direction = ship.direction
+        while not cls.is_move_possible_in_direction(ship, direction, board):
+            if board.is_position_dead_end(ship.position):
+                return False
+            direction = cls.random_turn(ship.direction)
+        move_order = cls.move_my_ship(ship, direction, board)
+        return move_order
 
 
 def surface(board):
@@ -225,12 +225,13 @@ def surface(board):
 #################
 #################
 ServiceUtils = ServiceUtils()
+ServiceMovement = ServiceMovement()
 global_data, board, ennemy_ship, my_ship = ServiceUtils.init()
 
 # game loop
 while True:
     turn_data = ServiceUtils.read_turn_data()
-    move_order = chose_movement_and_move(my_ship, board)
+    move_order = ServiceMovement.chose_movement_and_move(my_ship, board)
     if not move_order:
         surface(board)
     else:
