@@ -7,6 +7,10 @@ class Ship(object):
     def __init__(self):
         self.position = Position(0, 0)
         self.direction = "N"
+        self.torpedo_cooldown = 3
+
+    def update_turn_data(self, turn_data):
+        self.torpedo_cooldown = turn_data["torpedo_cooldown"]
 
     def move(self, direction):
         self.direction = direction
