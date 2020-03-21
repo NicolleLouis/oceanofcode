@@ -15,6 +15,12 @@ namespace
     constexpr int kHeight = 15;
 }
 
+/*
+/* ####################################
+/* Submarine
+/* ####################################
+*/
+
 class Submarine
 {
 private:    
@@ -52,6 +58,73 @@ public:
 		cerr << "torpedo cooldown: " << m_torpedoCooldown << endl;
     }
 };
+
+/*
+/* ####################################
+/* Point
+/* ####################################
+*/
+
+struct Point
+{
+    int x;
+    int y;
+    
+    Point() {};
+    Point(const int x_, const int y_) : x(x_), y(y_) {};
+    
+};
+
+bool operator==(Point const& p1, Point const& p2) { return (p1.x == p2.x && p1.y == p2.y); } 
+
+/*
+/* ####################################
+/* Direction
+/* ####################################
+*/
+
+enum Direction
+{
+    kNorth,
+    kEast,
+    kSouth,
+    kWest
+};
+
+#define Delta Point
+
+Delta direction2delta(const Direction direction)
+{
+   switch (direction)
+   {
+       case Direction::kNorth:
+       return Delta(0, -1);
+       case Direction::kEast:
+       return Delta(1, 0);
+       case Direction::kSouth:
+       return Delta(0, 1);
+       case Direction::kWest:
+       return Delta(-1, 0);
+   }
+}
+
+Direction delta2direction(const Delta delta)
+{
+    if (delta == Delta(0, -1))
+        return Direction::kNorth;
+    else if (delta == Delta(0, 1))
+        return Direction::kSouth;
+    else if (delta == Delta(-1, 0))
+        return Direction::kWest;
+    else
+        return Direction::kEast;
+}
+
+/*
+/* ####################################
+/* Map
+/* ####################################
+*/
 
 class Map
 {
@@ -95,6 +168,12 @@ public:
             
 };
 
+/*
+/* ####################################
+/* MoveMap
+/* ####################################
+*/
+
 class MoveMap : public Map
 {
 private:
@@ -126,10 +205,7 @@ public:
             return false;
         }
         
-        if (m_cells[x][y] == CellType::kEmpty)
-        {
-            return true;
-        }
+        return m_cells[x][y] == CellType::kEmpty;
     }
     
     void reset()
@@ -159,6 +235,12 @@ public:
         }
     }
 };
+
+/*
+/* ####################################
+/* OppOriginMap
+/* ####################################
+*/
 
 class OppOriginMap : public Map
 {
@@ -215,6 +297,12 @@ public:
     
 };
 
+/*
+/* ####################################
+/* OppPoisitionMap
+/* ####################################
+*/
+
 class OppPositionMap : public Map
 {
 private:
@@ -244,8 +332,37 @@ public:
 			return false;
 		
 		return m_cells[x][y] == 1;
-	}	
+	}
+	
+	Point getBarycenter()
+	{
+	    int s_x = 0;
+	    int s_y = 0;
+	    int n = 0;
+	    for (int x = 0; x < kWidth; x++)
+        {
+            for (int y = 0; y < kHeight; y++)
+            {
+                const int value = m_cells[x][y];
+                s_x += value * x;
+                s_y += value * y;
+                n += value;
+            }
+        }
+        
+        Point barycenter;
+        barycenter.x = s_x / n;
+        barycenter.y = s_y / n;
+        
+        return barycenter;
+	}
 };
+
+/*
+/* ####################################
+/* Player
+/* ####################################
+*/
 
 class Player
 {
@@ -280,6 +397,13 @@ public:
     }
 };
 
+
+/*
+/* ####################################
+/* OppFinder
+/* ####################################
+*/
+
 class OppFinder
 {
 private:
@@ -296,7 +420,7 @@ public:
 	m_oppOriginMap(moveMap),
 	m_oppPositionMap(m_oppOriginMap, m_dx, m_dy)
 	{
-
+        m_oppPositionMap = OppPositionMap(m_oppOriginMap, m_dx, m_dy);
 	}
 	
 	void update(const int dx, const int dy)
@@ -313,28 +437,34 @@ public:
 		return m_oppPositionMap.canBeOpp(x, y);
 	}
 	
+	Point getBarycenter()
+	{
+	    return m_oppPositionMap.getBarycenter();
+	}
+	
 	void print() const
 	{
+	    cerr << "oppOriginMap" << endl;
+	    m_oppOriginMap.print();
+	    cerr << "oppPositionMap" << endl;
 		m_oppPositionMap.print();
 	}
 	
 };
+
+/*
+/* ####################################
+/* Game
+/* ####################################
+*/
 
 class Game
 {
 private:
     Player m_myPlayer;
     Player m_oppPlayer;
-    MoveMap m_moveMap;
+    MoveMap* m_moveMap;
 	OppFinder m_oppFinder;
-    
-    enum Direction
-    {
-        kNorth,
-        kEast,
-        kSouth,
-        kWest
-    };
     
     void move(const Direction direction)
     {
@@ -362,8 +492,8 @@ private:
     
     void surface() 
     { 
-        cout << "SURFACE" << endl;
-        m_moveMap.reset();
+        cout << "SURFACE";
+        m_moveMap->reset();
     }
     
     void chargeTorpedo() { cout << " TORPEDO"; }
@@ -374,7 +504,7 @@ private:
     
     
 public:
-    Game(const Player& myPlayer, const Player& oppPlayer, const MoveMap& moveMap, const OppFinder& oppFinder) :
+    Game(const Player& myPlayer, const Player& oppPlayer, MoveMap* moveMap, const OppFinder& oppFinder) :
     m_myPlayer(myPlayer),
     m_oppPlayer(oppPlayer),
     m_moveMap(moveMap),
@@ -382,20 +512,125 @@ public:
     {  
     };
 	
-	void findAndAttack(const int x, const int y)
+	bool findAndAttack()
 	{
+	    
+	    const int sub_x = m_myPlayer.getSubmarine().getX();
+        const int sub_y = m_myPlayer.getSubmarine().getY();
+        
 		for (int dx = -4; dx < 5; dx++)
 		{
 			for (int dy = -4; dy < 5; dy++)
 			{
-				if (oppFinder.canBeOpp(sub_x + dx, sub_y + dy))
-				{
-					shootTorpedo(sub_x + dx, sub_y + dy);
-					newAction();
-					return;
-				}
+			    if (abs(dx) + abs(dy) >= 2 && abs(dx) + abs(dy) <= 4)
+			    {
+			        if (m_oppFinder.canBeOpp(sub_x + dx, sub_y + dy))
+    				{
+    					shootTorpedo(sub_x + dx, sub_y + dy);
+    					return true;
+    				}
+			    }
 			}
 		}
+		
+		return false;
+	}
+	
+	bool goTo(const Point& target, bool secondAction=false)
+	{
+	    cerr << "Go to " << target.x << " " << target.y << endl;
+		const int sub_x = m_myPlayer.getSubmarine().getX();
+        const int sub_y = m_myPlayer.getSubmarine().getY();
+		
+		const Point directionPoint = Point(target.x - sub_x, target.y - sub_y);
+		
+		array<Delta, 4> bestDirection;
+		
+		// très surement factorisable mais la flemme
+		if (abs(directionPoint.x) > abs(directionPoint.y))
+		{
+			if (directionPoint.x < 0)
+			{
+				bestDirection[0] = Delta(-1, 0);
+				bestDirection[3] = Delta(1, 0);
+			}
+			else
+			{
+				bestDirection[0] = Delta(1, 0);
+				bestDirection[3] = Delta(-1, 0);
+			}
+			
+			if (directionPoint.y < 0)
+			{
+				bestDirection[1] = Delta(0, -1);
+				bestDirection[2] = Delta(0, 1);
+			}
+			else
+			{
+				bestDirection[1] = Delta(0, 1);
+				bestDirection[2] = Delta(0, -1);
+			}
+		}		
+		else
+		{
+			if (directionPoint.y < 0)
+			{
+				bestDirection[0] = Delta(0, -1);
+				bestDirection[3] = Delta(0, 1);
+			}
+			else
+			{
+				bestDirection[0] = Delta(0, 1);
+				bestDirection[3] = Delta(0, -1);
+			}
+			
+			if (directionPoint.x < 0)
+			{
+				bestDirection[1] = Delta(-1, 0);
+				bestDirection[2] = Delta(1, 0);
+			}
+			else
+			{
+				bestDirection[1] = Delta(1, 0);
+				bestDirection[2] = Delta(-1, 0);
+			}
+		}
+		
+		for (int i = 0; i < 4; i++)
+		{
+			if (m_moveMap->isMovable(sub_x + bestDirection[i].x, sub_y + bestDirection[i].y))
+			{
+			    if (secondAction)
+			        newAction();
+				move(delta2direction(bestDirection[i]));
+				chargeTorpedo();
+				
+				return true;
+			}
+		}
+		
+		// not direction allowed		
+		return false;
+	}
+	
+	void doSomething()
+	{
+	    bool fireTorpedo = false;
+	    if (m_myPlayer.getSubmarine().canShootTorpedo())
+		{
+			fireTorpedo = findAndAttack();
+		}
+		
+		bool moved = false;
+    	const Point barycenter = m_oppFinder.getBarycenter();
+    		
+    	moved = goTo(barycenter, fireTorpedo);
+		
+		if (!fireTorpedo && !moved)
+		    surface();
+
+		endAction();
+		return;
 	}
     
     void moveAttackRandom()
@@ -405,7 +640,7 @@ public:
 		
 		if (m_myPlayer.getSubmarine().canShootTorpedo())
 		{
-			findAndAttack(sub_x, sub_y);
+			findAndAttack();
 		}
 		
         const array<int, 4> dx = { -1, 0, 1, 0 };
@@ -414,11 +649,12 @@ public:
         int direction_idx = 0;
         for (; direction_idx < 4; direction_idx++)
         {
-            if (m_moveMap.isMovable(x + dx[direction_idx], y + dy[direction_idx]))
+            if (m_moveMap->isMovable(sub_x + dx[direction_idx], sub_y + dy[direction_idx]))
             {
                 break;
             }
         }
+
         switch (direction_idx)
         {
             case 0:
@@ -438,11 +674,19 @@ public:
                 break;
         }
         
-        chargeTorpedo();
+        if (direction_idx < 4)
+        {
+            chargeTorpedo();
+        }
         endAction();
     }     
 };
 
+/*
+/* ####################################
+/* main
+/* ####################################
+*/
 
 int main()
 {
@@ -520,9 +764,10 @@ int main()
 
             oppFinder.update(dx, dy);
         }
-        myPlayer.print();
-        Game game(myPlayer, oppPlayer, moveMap, oppFinder);
-        game.moveAttackRandom();
+        oppFinder.print();
+        //myPlayer.print();
+        Game game(myPlayer, oppPlayer, &moveMap, oppFinder);
+        game.doSomething();
 
         // Write an action using cout. DON'T FORGET THE "<< endl"
         // To debug: cerr << "Debug messages..." << endl;
