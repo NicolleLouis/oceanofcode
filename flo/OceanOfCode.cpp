@@ -113,7 +113,7 @@ public:
         this->set(x, y, CellType::kPath);
     }
     
-    bool isMovable(const int x, const int y)
+    bool isMovable(const int x, const int y) const
     {
         if (x < 0 || x >= kWidth || y < 0 || y >= kHeight)
         {
@@ -154,7 +154,7 @@ public:
     }
 };
 
-class OppMap : public Map
+class OppOriginMap : public Map
 {
 private:
   enum CellType
@@ -164,7 +164,7 @@ private:
       kTmp
   };
 public:
-    OppMap(MoveMap moveMap) : Map(kYes)
+    OppOriginMap(const MoveMap& moveMap) : Map(kYes)
     {
         for (int y = 0; y < kHeight; y++)
         {
@@ -197,21 +197,40 @@ public:
                 }
             }
         }
-        /*
-        
+    }
+	
+	bool isOriginCandidate(const int x, const int y) const
+	{
+		if (x < 0 || x >= kWidth || y < 0 || y >= kHeight)
+			return false;
+		
+		return m_cells[x][y] == CellType::kYes;
+	}
+    
+};
+
+class OppPositionMap : public Map
+{
+private:
+
+public:
+    OppPositionMap(const OppOriginMap& oppOriginMap, const int dx, const int dy) : Map(0)
+    {
         for (int y = 0; y < kHeight; y++)
         {
             for (int x = 0; x < kWidth; x++)
             {
-                if (m_cells[x][y] == CellType::kTmp)
+                if (oppOriginMap.isOriginCandidate(x - dx, y - dy))
                 {
-                    m_cells[x][y] = CellType::kNo;
+                    m_cells[x][y] = 1;
                 }
+				else
+				{
+					m_cells[x][y] = 0;
+				}
             }
         }
-        */
-    }
-    
+    }    
 };
 
 class Player
@@ -342,10 +361,46 @@ public:
     }     
 };
 
+class OppFinder
+{
+private:
+	OppOriginMap m_oppOriginMap;
+	OppPositionMap m_oppPositionMap;
+	
+	int m_dx;
+	int m_dy;
+	
+public:
+	OppFinder(const MoveMap& moveMap) :
+	m_dx(0),
+	m_dy(0),
+	m_oppOriginMap(moveMap),
+	m_oppPositionMap(m_oppOriginMap, m_dx, m_dy)
+	{
+
+	}
+	
+	void update(const int dx, const int dy)
+	{
+		m_dx += dx;
+		m_dy += dy;
+		
+		m_oppOriginMap.update(m_dx, m_dy);
+		m_oppPositionMap = OppPositionMap(m_oppOriginMap, m_dx, m_dy);
+	}
+	
+	void print() const
+	{
+		m_oppPositionMap.print();
+	}
+	
+};
+
+
 
 int main()
 {
-    MoveMap map;
+    MoveMap moveMap;
     
     int width;
     int height;
@@ -357,11 +412,11 @@ int main()
         for (int x = 0; x < height; x++)
         {
             if (line[x] == 'x')
-                map.setIsland(x, i);
+                moveMap.setIsland(x, i);
         }
     }
     
-    OppMap oppMap(map);
+    OppFinder oppFinder(moveMap);
     
     Player myPlayer(myId);
     
@@ -371,10 +426,7 @@ int main()
     // Write an action using cout. DON'T FORGET THE "<< endl"
     // To debug: cerr << "Debug messages..." << endl;
 
-    map.getInitialPosition();
-    
-    int oppDX = 0;
-    int oppDY = 0;
+    moveMap.getInitialPosition();
 
     // game loop
     while (1) {
@@ -392,7 +444,7 @@ int main()
         string opponentOrders;
         getline(cin, opponentOrders);
         
-        map.setPath(x, y);
+        moveMap.setPath(x, y);
         
         myPlayer.setLife(myLife);
         myPlayer.setSubmarine(x, y);
@@ -419,14 +471,13 @@ int main()
                     dx = 1;
                     break;                    
             };
-            oppDX += dx;
-            oppDY += dy;
-            oppMap.update(oppDX, oppDY);
+
+            oppFinder.update(dx, dy);
         }
         
-        oppMap.print();
+        oppFinder.print();
         
-        Game game(myPlayer, oppPlayer, map);
+        Game game(myPlayer, oppPlayer, moveMap);
         game.moveRandom();
 
         // Write an action using cout. DON'T FORGET THE "<< endl"
