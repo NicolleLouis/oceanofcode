@@ -22,6 +22,8 @@ private:
     int m_y;
     
     bool m_isKnownPosition;
+	
+	int m_torpedoCooldown;
 
 public:
     Submarine() :
@@ -29,21 +31,25 @@ public:
     {
     };
     
-    Submarine(const int x, const int y) : 
+    Submarine(const int x, const int y, const int torpedoCooldown) : 
     m_x(x),
     m_y(y),
-    m_isKnownPosition(true)
+    m_isKnownPosition(true),
+	m_torpedoCooldown(torpedoCooldown)
     {};
     
     int getX() const { return m_x; }
     int getY() const { return m_y; }
+	
+	bool canShootTorpedo() const { return m_torpedoCooldown == 0; }
     
     void print() const
     {
         if (m_isKnownPosition)
             cerr << "x = " << m_x << "; y = " << m_y << endl;
         else
-            cerr << "Unkown position" << endl;    
+            cerr << "Unkown position" << endl;
+		cerr << "torpedo cooldown: " << m_torpedoCooldown << endl;
     }
 };
 
@@ -230,7 +236,15 @@ public:
 				}
             }
         }
-    }    
+    }
+
+	bool canBeOpp(const int x, const int y) const
+	{
+		if (x < 0 || x >= kWidth || y < 0 || y >= kHeight)
+			return false;
+		
+		return m_cells[x][y] == 1;
+	}	
 };
 
 class Player
@@ -247,9 +261,9 @@ public:
     
     Submarine getSubmarine() const { return m_submarine; }
     
-    void setSubmarine(const int x, const int y)
+    void setSubmarine(const int x, const int y, const int torpedoCooldown)
     {
-        m_submarine = Submarine(x, y);
+        m_submarine = Submarine(x, y, torpedoCooldown);
     }
     
     void setLife (const int life)
@@ -266,12 +280,53 @@ public:
     }
 };
 
+class OppFinder
+{
+private:
+	OppOriginMap m_oppOriginMap;
+	OppPositionMap m_oppPositionMap;
+	
+	int m_dx;
+	int m_dy;
+	
+public:
+	OppFinder(const MoveMap& moveMap) :
+	m_dx(0),
+	m_dy(0),
+	m_oppOriginMap(moveMap),
+	m_oppPositionMap(m_oppOriginMap, m_dx, m_dy)
+	{
+
+	}
+	
+	void update(const int dx, const int dy)
+	{
+		m_dx += dx;
+		m_dy += dy;
+		
+		m_oppOriginMap.update(m_dx, m_dy);
+		m_oppPositionMap = OppPositionMap(m_oppOriginMap, m_dx, m_dy);
+	}
+	
+	bool canBeOpp(const int x, const int y) const
+	{
+		return m_oppPositionMap.canBeOpp(x, y);
+	}
+	
+	void print() const
+	{
+		m_oppPositionMap.print();
+	}
+	
+};
+
 class Game
 {
 private:
     Player m_myPlayer;
     Player m_oppPlayer;
     MoveMap m_moveMap;
+	OppFinder m_oppFinder;
     
     enum Direction
     {
@@ -281,7 +336,7 @@ private:
         kWest
     };
     
-    void move(Direction direction)
+    void move(const Direction direction)
     {
         switch (direction)
         {
@@ -299,6 +354,11 @@ private:
                 break;
         }
     }
+	
+	void shootTorpedo(const int x, const int y)
+	{
+		cout << "TORPEDO " << x << " " << y;
+	}
     
     void surface() 
     { 
@@ -314,20 +374,42 @@ private:
     
     
 public:
-    Game(const Player& myPlayer, const Player& oppPlayer, const MoveMap& moveMap) :
+    Game(const Player& myPlayer, const Player& oppPlayer, const MoveMap& moveMap, const OppFinder& oppFinder) :
     m_myPlayer(myPlayer),
     m_oppPlayer(oppPlayer),
-    m_moveMap(moveMap)
+    m_moveMap(moveMap),
+	m_oppFinder(oppFinder)
     {  
     };
+	
+	void findAndAttack(const int x, const int y)
+	{
+		for (int dx = -4; dx < 5; dx++)
+		{
+			for (int dy = -4; dy < 5; dy++)
+			{
+				if (oppFinder.canBeOpp(sub_x + dx, sub_y + dy))
+				{
+					shootTorpedo(sub_x + dx, sub_y + dy);
+					newAction();
+					return;
+				}
+			}
+		}
+	}
     
-    void moveRandom()
+    void moveAttackRandom()
     {
+		const int sub_x = m_myPlayer.getSubmarine().getX();
+        const int sub_y = m_myPlayer.getSubmarine().getY();
+		
+		if (m_myPlayer.getSubmarine().canShootTorpedo())
+		{
+			findAndAttack(sub_x, sub_y);
+		}
+		
         const array<int, 4> dx = { -1, 0, 1, 0 };
         const array<int, 4> dy = { 0, -1, 0, 1 };
-        
-        const int x = m_myPlayer.getSubmarine().getX();
-        const int y = m_myPlayer.getSubmarine().getY();
         
         int direction_idx = 0;
         for (; direction_idx < 4; direction_idx++)
@@ -360,42 +442,6 @@ public:
         endAction();
     }     
 };
-
-class OppFinder
-{
-private:
-	OppOriginMap m_oppOriginMap;
-	OppPositionMap m_oppPositionMap;
-	
-	int m_dx;
-	int m_dy;
-	
-public:
-	OppFinder(const MoveMap& moveMap) :
-	m_dx(0),
-	m_dy(0),
-	m_oppOriginMap(moveMap),
-	m_oppPositionMap(m_oppOriginMap, m_dx, m_dy)
-	{
-
-	}
-	
-	void update(const int dx, const int dy)
-	{
-		m_dx += dx;
-		m_dy += dy;
-		
-		m_oppOriginMap.update(m_dx, m_dy);
-		m_oppPositionMap = OppPositionMap(m_oppOriginMap, m_dx, m_dy);
-	}
-	
-	void print() const
-	{
-		m_oppPositionMap.print();
-	}
-	
-};
-
 
 
 int main()
@@ -447,7 +493,7 @@ int main()
         moveMap.setPath(x, y);
         
         myPlayer.setLife(myLife);
-        myPlayer.setSubmarine(x, y);
+        myPlayer.setSubmarine(x, y, torpedoCooldown);
         
         oppPlayer.setLife(oppLife);
         
@@ -474,11 +520,9 @@ int main()
 
             oppFinder.update(dx, dy);
         }
-        
-        oppFinder.print();
-        
-        Game game(myPlayer, oppPlayer, moveMap);
-        game.moveRandom();
+        myPlayer.print();
+        Game game(myPlayer, oppPlayer, moveMap, oppFinder);
+        game.moveAttackRandom();
 
         // Write an action using cout. DON'T FORGET THE "<< endl"
         // To debug: cerr << "Debug messages..." << endl;
