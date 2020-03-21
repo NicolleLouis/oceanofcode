@@ -11,6 +11,7 @@ class Ship(object):
         self.past_moves = []
         self.dx = 0
         self.dy = 0
+        self.torpedo_cooldown = -1
 
     def do_actions(self, action):
         if "MOVE N" in action:
@@ -47,6 +48,21 @@ class Ship(object):
             return possible_moves[0]
         else:
             return "SURFACE"
+
+    def best_attack_action(self, board):
+        for cell in board.possible_enemy_cells:
+            distance_to_cell = board.get_distance(board.get_cell(self.x, self.y), cell)
+            # TODO: add probability based on how many cells in the area
+            if distance_to_cell <= 4 and self.torpedo_cooldown == 0:
+                return "TORPEDO " + str(cell.x) + " " + str(cell.y)
+        return "DUNNO"
+
+    def best_action(self, board):
+        best_attack = self.best_attack_action(board)
+        if best_attack == "DUNNO":
+            return self.best_move_action(board)
+        else:
+            return best_attack
 
     def update_enemy_action(self, action):
         if "MOVE N" in action:
@@ -90,6 +106,7 @@ class Board(object):
         self.map = []
         self.islands = []
         self.possible_enemy_starting_cells = []
+        self.possible_enemy_cells = []
         for y, line in enumerate(lines):
             cell_line = []
             for x, char in enumerate(line):
@@ -164,15 +181,20 @@ class Board(object):
                     except:
                         pass
 
-    def possible_cells_enemy(self, enemy_ship):
+    def update_possible_enemy_cells(self, enemy_ship):
         dx = enemy_ship.dx
         dy = enemy_ship.dy
+        self.update_possible_starting_cells(enemy_ship)
         possible_cells = []
         for cell_line in self.map:
             for cell in cell_line:
                 if cell in self.possible_enemy_starting_cells:
                     possible_cells.append(self.get_cell_from_vector(cell, dx, dy))
-        return possible_cells
+        self.possible_enemy_cells = possible_cells
+
+    # to do: add pathing algo, to compute real distance.
+    def get_distance(self, cell1, cell2):
+        return math.fabs(cell1.x - cell2.x) + math.fabs(cell1.y - cell2.y)
 
     def print_board(self):
         for line in self.map:
@@ -183,22 +205,6 @@ class Board(object):
 
 def print_log(log):
     print(log, file=sys.stderr)
-
-def vectToDir(x):
-    ints=[[1, 0], [0, 1], [-1, 0], [0, -1]]
-    strs=["E", "S", "W", "N"]
-    return strs[ints.index(x)]
-
-def dirToVect(x):
-    ints=[[1, 0], [0, 1], [-1, 0], [0, -1]]
-    strs=["E", "S", "W", "N"]
-    return ints[strs.index(x)]
-
-def nextPositionFromVect(x, y, vect):
-    return [x + vect[0], y + vect[1]]
-
-def nextPositionFromDir(x, y, dir):
-    return nextPositionFromVect(x, y, dirToVect(dir))
 
 def read_turn_data():
     x, y, my_life, opp_life, torpedo_cooldown, \
@@ -262,14 +268,12 @@ while True:
     turn_data = read_turn_data()
     my_ship.x = turn_data['x']
     my_ship.y = turn_data['y']
-    board.get_cell(turn_data['x'], turn_data['y']).visit()
+    my_ship.torpedo_cooldown = turn_data['torpedo_cooldown']
+    my_ship_cell = board.get_cell(my_ship.x, my_ship.y)
+    my_ship_cell.visit()
     enemy_orders = turn_data['enemy_orders']
     enemy_ship.update_enemy_action(enemy_orders)
-    board.update_possible_starting_cells(enemy_ship)
-    possible_enemy_cells = board.possible_cells_enemy(enemy_ship)
+    board.update_possible_enemy_cells(enemy_ship)
 
-    for cell in possible_enemy_cells:
-        print_log(str(cell.x) + " " + str(cell.y))
-
-    move_action = my_ship.best_move_action(board)
-    print(my_ship.do_actions(move_action))
+    best_action = my_ship.best_action(board)
+    print(my_ship.do_actions(best_action))
