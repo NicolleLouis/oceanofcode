@@ -17,7 +17,22 @@ class ServiceTorpedo:
         )
         if len(possible_attack_position) == 0:
             return False
-        return ServiceOrder.create_attack_order(possible_attack_position[0])
+        safe_attack_position = ServiceTorpedo.find_safest_attack_position(
+            ship,
+            possible_attack_position
+        )
+        return ServiceOrder.create_attack_order(safe_attack_position)
+
+    @staticmethod
+    def find_safest_attack_position(ship, positions):
+        best_position = positions[0]
+        best_distance = 0
+        for position in positions:
+            distance = position.get_distance(ship.position)
+            if distance > best_distance:
+                best_distance = distance
+                best_position = position
+        return best_position
 
     @staticmethod
     def find_within_range_torpedo_positions(ship, enemy_ship):
