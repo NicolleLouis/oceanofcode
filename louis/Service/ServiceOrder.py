@@ -27,6 +27,10 @@ class ServiceOrder:
     def create_msg_order(msg):
         return "MSG {}".format(msg)
 
+    @staticmethod
+    def create_attack_order(position):
+        return "TORPEDO {} {}".format(position.x, position.y)
+
     @classmethod
     def create_number_of_possible_position_order(cls, enemy_ship):
         return cls.create_msg_order(
