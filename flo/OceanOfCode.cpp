@@ -378,7 +378,7 @@ public:
     
     Submarine getSubmarine() const { return m_submarine; }
     
-    void setSubmarine(const int x, const int y, const int torpedoCooldown)
+    void updateSubmarine(const int x, const int y, const int torpedoCooldown)
     {
         m_submarine = Submarine(x, y, torpedoCooldown);
     }
@@ -423,10 +423,10 @@ public:
         m_oppPositionMap = OppPositionMap(m_oppOriginMap, m_dx, m_dy);
 	}
 	
-	void update(const int dx, const int dy)
+	void update(Delta delta)
 	{
-		m_dx += dx;
-		m_dy += dy;
+		m_dx += delta.x;
+		m_dy += delta.y;
 		
 		m_oppOriginMap.update(m_dx, m_dy);
 		m_oppPositionMap = OppPositionMap(m_oppOriginMap, m_dx, m_dy);
@@ -463,7 +463,7 @@ class Game
 private:
     Player m_myPlayer;
     Player m_oppPlayer;
-    MoveMap* m_moveMap;
+    MoveMap m_moveMap;
 	OppFinder m_oppFinder;
     
     void move(const Direction direction)
@@ -493,7 +493,7 @@ private:
     void surface() 
     { 
         cout << "SURFACE";
-        m_moveMap->reset();
+        m_moveMap.reset();
     }
     
     void chargeTorpedo() { cout << " TORPEDO"; }
@@ -504,7 +504,7 @@ private:
     
     
 public:
-    Game(const Player& myPlayer, const Player& oppPlayer, MoveMap* moveMap, const OppFinder& oppFinder) :
+    Game(const Player& myPlayer, const Player& oppPlayer, MoveMap moveMap, const OppFinder& oppFinder) :
     m_myPlayer(myPlayer),
     m_oppPlayer(oppPlayer),
     m_moveMap(moveMap),
@@ -598,7 +598,7 @@ public:
 		
 		for (int i = 0; i < 4; i++)
 		{
-			if (m_moveMap->isMovable(sub_x + bestDirection[i].x, sub_y + bestDirection[i].y))
+			if (m_moveMap.isMovable(sub_x + bestDirection[i].x, sub_y + bestDirection[i].y))
 			{
 			    if (secondAction)
 			        newAction();
@@ -631,55 +631,28 @@ public:
 
 		endAction();
 		return;
+	} 
+	
+	void updatePlayers(const int myLife, const int oppLife)
+	{
+		m_myPlayer.setLife(myLife);
+		m_oppPlayer.setLife(oppLife);
 	}
-    
-    void moveAttackRandom()
-    {
-		const int sub_x = m_myPlayer.getSubmarine().getX();
-        const int sub_y = m_myPlayer.getSubmarine().getY();
-		
-		if (m_myPlayer.getSubmarine().canShootTorpedo())
-		{
-			findAndAttack();
-		}
-		
-        const array<int, 4> dx = { -1, 0, 1, 0 };
-        const array<int, 4> dy = { 0, -1, 0, 1 };
-        
-        int direction_idx = 0;
-        for (; direction_idx < 4; direction_idx++)
-        {
-            if (m_moveMap->isMovable(sub_x + dx[direction_idx], sub_y + dy[direction_idx]))
-            {
-                break;
-            }
-        }
-
-        switch (direction_idx)
-        {
-            case 0:
-                move(Direction::kWest);
-                break;
-            case 1:
-                move(Direction::kNorth);
-                break;
-            case 2:
-                move(Direction::kEast);
-                break;
-            case 3:
-                move(Direction::kSouth);
-                break;
-            case 4:
-                surface();
-                break;
-        }
-        
-        if (direction_idx < 4)
-        {
-            chargeTorpedo();
-        }
-        endAction();
-    }     
+	
+	void updateSubmarine(const int x, const int y, const int torpedoCooldown)
+	{
+		m_myPlayer.updateSubmarine(x, y, torpedoCooldown);
+	}
+	
+	void updateOppfinder(const Direction direction)
+	{
+		m_oppFinder.update(direction2delta(direction));
+	}
+	
+	void updatePath(const int x, const int y)
+	{
+		m_moveMap.setPath(x, y);
+	}
 };
 
 /*
@@ -712,6 +685,8 @@ int main()
     
     const int oppId = (myId == 0) ? 1 : 0;
     Player oppPlayer(oppId);
+	
+	Game game(myPlayer, oppPlayer, moveMap, oppFinder);
 
     // Write an action using cout. DON'T FORGET THE "<< endl"
     // To debug: cerr << "Debug messages..." << endl;
@@ -734,39 +709,33 @@ int main()
         string opponentOrders;
         getline(cin, opponentOrders);
         
-        moveMap.setPath(x, y);
-        
-        myPlayer.setLife(myLife);
-        myPlayer.setSubmarine(x, y, torpedoCooldown);
-        
-        oppPlayer.setLife(oppLife);
+		game.updatePath(x, y);        
+		game.updatePlayers(myLife, oppLife);
+		game.updateSubmarine(x, y, torpedoCooldown);
         
         const size_t foundMove = opponentOrders.find("MOVE");
         if (foundMove != string::npos)
         {
-            int dx = 0;
-            int dy = 0;
+            Direction oppDirection;
             switch(opponentOrders[foundMove + 5])
             {
                case 'N':
-                    dy = -1;
+                    oppDirection = Direction::kNorth;
                     break;
                 case 'W':
-                    dx = -1;
+                    oppDirection = Direction::kWest;
                     break;
                 case 'S':
-                    dy = 1;
+                    oppDirection = Direction::kSouth;
                     break;
                 case 'E':
-                    dx = 1;
+                    oppDirection = Direction::kEast;
                     break;                    
             };
 
-            oppFinder.update(dx, dy);
+            game.updateOppfinder(oppDirection);
         }
-        oppFinder.print();
-        //myPlayer.print();
-        Game game(myPlayer, oppPlayer, &moveMap, oppFinder);
+
         game.doSomething();
 
         // Write an action using cout. DON'T FORGET THE "<< endl"
