@@ -2,6 +2,8 @@ import sys
 import math
 import random
 
+directions = ["N", "W", "E", "S"]
+
 
 class Position(object):
     def __init__(self, x, y):
@@ -26,8 +28,6 @@ class Position(object):
 
 
 class Ship(object):
-    directions = ["N", "W", "E", "S"]
-
     def __init__(self):
         self.position = Position(0, 0)
         self.direction = "N"
@@ -70,10 +70,15 @@ class Board(object):
                 cell_line.append(Cell(Position(x, y), char == "x"))
             self.map.append(cell_line)
 
-    def is_position_valid_for_move(self, position):
+    def is_position_in_grid(self, position):
         if position.x < 0 or position.x >= self.width:
             return False
         if position.y < 0 or position.y >= self.height:
+            return False
+        return True
+
+    def is_position_valid_for_move(self, position):
+        if not self.is_position_in_grid(position):
             return False
         return self.get_cell(position).is_valid_for_move()
 
@@ -145,7 +150,7 @@ def is_move_possible_in_direction(ship, direction, board):
 def move_my_ship(ship, direction, board):
     board.get_cell(position=ship.position).has_been_visited()
     ship.move(direction)
-    move_order = "MOVE {}".format(direction)
+    move_order = "MOVE {} TORPEDO".format(direction)
     return move_order
 
 
@@ -180,6 +185,5 @@ choose_starting_cell(
 # game loop
 while True:
     turn_data = read_turn_data()
-    move_order = chose_movement_and_move(my_ship, board)
-    turn_order = "{} TORPEDO".format(move_order)
-    print(turn_order)
+    order = chose_movement_and_move(my_ship, board)
+    print(order)
