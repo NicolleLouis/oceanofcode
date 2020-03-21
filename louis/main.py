@@ -21,7 +21,7 @@ while True:
     turn_data = ServiceUtils.read_turn_data()
     ennemy_ship.read_opponent_order(turn_data["opponent_orders"])
     move_order = ServiceMovement.chose_movement_and_move(my_ship, board)
-    message_order = ServiceOrder.create_msg_order("Test")
+    message_order = ServiceOrder.create_number_of_possible_position_order(ennemy_ship)
     if not move_order:
         move_order = surface(board)
     orders = ServiceOrder.concatenate_order([move_order, message_order])

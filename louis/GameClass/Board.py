@@ -2,8 +2,6 @@ from louis.GameClass import Cell, Position
 from louis.Service import ServiceUtils
 from louis.constants import directions
 
-directions = ["N", "W", "E", "S"]
-
 
 class Board(object):
     def __init__(self, height, width, lines):
@@ -54,6 +52,14 @@ class Board(object):
                 current_position = start_position.add_position(delta_position)
                 if not self.is_position_valid_for_enemy(current_position):
                     self.get_cell(start_position).cannot_be_enemy_start()
+
+    def compute_number_of_potential_positions(self):
+        number_of_positions = 0
+        for x in range(self.width):
+            for y in range(self.height):
+                if self.get_cell(Position(x,y)).can_be_enemy_position:
+                    number_of_positions += 1
+        return number_of_positions
 
     def update_enemy_current_position(self, delta_position):
         for x in range(self.width):

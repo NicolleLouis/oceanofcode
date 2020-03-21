@@ -10,6 +10,10 @@ class EnemyShip(object):
             width=width,
             lines=lines
         )
+        self.number_of_possible_positions = height*width
+
+    def update_number_of_possible_positions(self):
+        self.number_of_possible_positions = self.enemy_board.compute_number_of_potential_positions()
 
     def read_opponent_order(self, opponent_order):
         if opponent_order == "NA":
@@ -22,3 +26,4 @@ class EnemyShip(object):
             )
         self.enemy_board.update_enemy_start_position(self.delta_position)
         self.enemy_board.update_enemy_current_position(self.delta_position)
+        self.update_number_of_possible_positions()

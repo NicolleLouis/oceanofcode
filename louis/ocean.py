@@ -138,6 +138,14 @@ class Board(object):
                 if not self.is_position_valid_for_enemy(current_position):
                     self.get_cell(start_position).cannot_be_enemy_start()
 
+    def compute_number_of_potential_positions(self):
+        number_of_positions = 0
+        for x in range(self.width):
+            for y in range(self.height):
+                if self.get_cell(Position(x,y)).can_be_enemy_position:
+                    number_of_positions += 1
+        return number_of_positions
+
     def update_enemy_current_position(self, delta_position):
         for x in range(self.width):
             for y in range(self.height):
@@ -170,6 +178,10 @@ class EnemyShip(object):
             width=width,
             lines=lines
         )
+        self.number_of_possible_positions = height * width
+
+    def update_number_of_possible_positions(self):
+        self.number_of_possible_positions = self.enemy_board.compute_number_of_potential_positions()
 
     def read_opponent_order(self, opponent_order):
         if opponent_order == "NA":
@@ -182,6 +194,7 @@ class EnemyShip(object):
             )
         self.enemy_board.update_enemy_start_position(self.delta_position)
         self.enemy_board.update_enemy_current_position(self.delta_position)
+        self.update_number_of_possible_positions()
 
 
 class ServiceUtils:
@@ -299,6 +312,12 @@ class ServiceOrder:
     def create_msg_order(msg):
         return "MSG {}".format(msg)
 
+    @classmethod
+    def create_number_of_possible_position_order(cls, enemy_ship):
+        return cls.create_msg_order(
+            enemy_ship.number_of_possible_positions
+        )
+
 
 def surface(board):
     for x in range(board.width):
@@ -319,7 +338,7 @@ while True:
     turn_data = ServiceUtils.read_turn_data()
     ennemy_ship.read_opponent_order(turn_data["opponent_orders"])
     move_order = ServiceMovement.chose_movement_and_move(my_ship, board)
-    message_order = ServiceOrder.create_msg_order("Test")
+    message_order = ServiceOrder.create_number_of_possible_position_order(ennemy_ship)
     if not move_order:
         move_order = surface(board)
     orders = ServiceOrder.concatenate_order([move_order, message_order])
