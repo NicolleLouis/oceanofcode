@@ -42,8 +42,9 @@ class Ship(object):
         self.torpedo_cooldown = 3
         self.life = 6
 
-    def update_turn_data(self, turn_data):
-        self.torpedo_cooldown = turn_data["torpedo_cooldown"]
+    def update_with_turn_data(self, context_data):
+        self.torpedo_cooldown = context_data.current_turn_torpedo_cooldown
+        self.life = context_data.current_turn_my_life
 
     def move(self, direction):
         self.direction = direction
@@ -192,7 +193,10 @@ class EnemyShip(object):
             width=width,
             lines=lines
         )
-        self.number_of_possible_positions = height*width
+        self.number_of_possible_positions = height * width
+
+    def update_with_turn_data(self, context_data):
+        self.life = context_data.current_turn_opp_life
 
     def update_number_of_possible_positions(self):
         self.number_of_possible_positions = self.enemy_board.compute_number_of_potential_positions()
@@ -212,7 +216,51 @@ class EnemyShip(object):
 
 
 class ContextData(object):
-    pass
+    def __init__(self):
+        self.current_turn_x = None
+        self.current_turn_y = None
+        self.current_turn_my_life = None
+        self.current_turn_opp_life = None
+        self.current_turn_torpedo_cooldown = None
+        self.current_turn_sonar_cooldown = None
+        self.current_turn_silence_cooldown = None
+        self.current_turn_sonar_result = None
+        self.current_turn_opponent_orders = None
+
+        self.last_turn_turn_x = None
+        self.last_turn_turn_y = None
+        self.last_turn_turn_my_life = None
+        self.last_turn_turn_opp_life = None
+        self.last_turn_turn_torpedo_cooldown = None
+        self.last_turn_turn_sonar_cooldown = None
+        self.last_turn_turn_silence_cooldown = None
+        self.last_turn_turn_sonar_result = None
+        self.last_turn_turn_opponent_orders = None
+        self.last_turn_own_orders = None
+
+    def update_turn_data(self, turn_data):
+        self.current_turn_x = turn_data["x"]
+        self.current_turn_y = turn_data["y"]
+        self.current_turn_my_life = turn_data["my_life"]
+        self.current_turn_opp_life = turn_data["opp_life"]
+        self.current_turn_torpedo_cooldown = turn_data["torpedo_cooldown"]
+        self.current_turn_sonar_cooldown = turn_data["sonar_cooldown"]
+        self.current_turn_silence_cooldown = turn_data["silence_cooldown"]
+        self.current_turn_sonar_result = turn_data["sonar_result"]
+        self.current_turn_opponent_orders = turn_data["opponent_orders"]
+
+    def update_end_of_turn_data(self, orders):
+        self.last_turn_turn_x = self.current_turn_x
+        self.last_turn_turn_y = self.current_turn_y
+        self.last_turn_turn_my_life = self.current_turn_my_life
+        self.last_turn_turn_opp_life = self.current_turn_opp_life
+        self.last_turn_turn_torpedo_cooldown = self.current_turn_torpedo_cooldown
+        self.last_turn_turn_sonar_cooldown = self.current_turn_sonar_cooldown
+        self.last_turn_turn_silence_cooldown = self.current_turn_silence_cooldown
+        self.last_turn_turn_sonar_result = self.current_turn_sonar_result
+        self.last_turn_turn_opponent_orders = self.current_turn_opponent_orders
+
+        self.last_turn_own_orders = orders
 
 
 class ServiceUtils:
@@ -403,16 +451,18 @@ class ServiceTorpedo:
 # Init
 global_data, board, ennemy_ship, my_ship = ServiceUtils.init()
 
-last_turn_data = None
+context_data = ContextData()
 
 # game loop
 while True:
     # read turn data and update own ship accordingly
     turn_data = ServiceUtils.read_turn_data()
-    my_ship.update_turn_data(turn_data)
+    context_data.update_turn_data(turn_data)
+    my_ship.update_with_turn_data(context_data)
+    ennemy_ship.update_with_turn_data(context_data)
 
     # Read and analyse opponent order
-    ennemy_ship.read_opponent_order(turn_data["opponent_orders"])
+    ennemy_ship.read_opponent_order(context_data.current_turn_opponent_orders)
 
     move_order = ServiceMovement.chose_movement_and_move(my_ship, board)
     attack_order = ServiceTorpedo.chose_torpedo(my_ship, ennemy_ship)
@@ -422,6 +472,4 @@ while True:
     orders = ServiceOrder.concatenate_order([move_order, attack_order, message_order])
     ServiceOrder.display_order(orders)
 
-    last_turn_data = turn_data
-    last_turn_data["orders"] = orders
-    ServiceUtils.print_log(str(last_turn_data))
+    context_data.update_end_of_turn_data(orders)
