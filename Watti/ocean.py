@@ -54,9 +54,9 @@ class Ship(object):
             distance_to_cell = board.get_distance(board.get_cell(self.x, self.y), cell)
             # TODO: add probability based on how many cells in the area
             # we don't shoot next to us unless we're sure to hit them
-            if self.torpedo_cooldown == 0
-                and ((distance_to_cell == 1 and  and len(board.possible_enemy_cells)==1)
-                    or (distance_to_cell <= 4 and distance_to_cell > 1)
+            if self.torpedo_cooldown == 0\
+                and ((distance_to_cell == 1 and len(board.possible_enemy_cells)==1)\
+                    or (distance_to_cell <= 4 and distance_to_cell > 1)\
                 ):
                     return "TORPEDO " + str(cell.x) + " " + str(cell.y)
         return "DUNNO"
