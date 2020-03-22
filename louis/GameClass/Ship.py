@@ -8,9 +8,11 @@ class Ship(object):
         self.position = Position(0, 0)
         self.direction = "N"
         self.torpedo_cooldown = 3
+        self.life = 6
 
     def update_turn_data(self, turn_data):
         self.torpedo_cooldown = turn_data["torpedo_cooldown"]
+        self.life = turn_data["my_life"]
 
     def move(self, direction):
         self.direction = direction

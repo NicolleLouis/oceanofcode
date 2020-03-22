@@ -40,6 +40,7 @@ class Ship(object):
         self.position = Position(0, 0)
         self.direction = "N"
         self.torpedo_cooldown = 3
+        self.life = 6
 
     def update_turn_data(self, turn_data):
         self.torpedo_cooldown = turn_data["torpedo_cooldown"]
@@ -185,12 +186,13 @@ class Board(object):
 class EnemyShip(object):
     def __init__(self, height, width, lines):
         self.delta_position = Position(0, 0)
+        self.life = 6
         self.enemy_board = Board(
             height=height,
             width=width,
             lines=lines
         )
-        self.number_of_possible_positions = height * width
+        self.number_of_possible_positions = height*width
 
     def update_number_of_possible_positions(self):
         self.number_of_possible_positions = self.enemy_board.compute_number_of_potential_positions()
@@ -207,6 +209,10 @@ class EnemyShip(object):
         self.enemy_board.update_enemy_start_position(self.delta_position)
         self.enemy_board.update_enemy_current_position(self.delta_position)
         self.update_number_of_possible_positions()
+
+
+class ContextData(object):
+    pass
 
 
 class ServiceUtils:
@@ -397,6 +403,8 @@ class ServiceTorpedo:
 # Init
 global_data, board, ennemy_ship, my_ship = ServiceUtils.init()
 
+last_turn_data = None
+
 # game loop
 while True:
     # read turn data and update own ship accordingly
@@ -413,3 +421,7 @@ while True:
         move_order = ServiceMovement.surface(board)
     orders = ServiceOrder.concatenate_order([move_order, attack_order, message_order])
     ServiceOrder.display_order(orders)
+
+    last_turn_data = turn_data
+    last_turn_data["orders"] = orders
+    ServiceUtils.print_log(str(last_turn_data))

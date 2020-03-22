@@ -1,13 +1,17 @@
-from louis.GameClass import Position
+from louis.GameClass import Position, ContextData
 from louis.Service import ServiceUtils, ServiceMovement, ServiceOrder, ServiceTorpedo
 
 # Init
 global_data, board, ennemy_ship, my_ship = ServiceUtils.init()
 
+last_turn_data = None
+context_data = ContextData()
+
 # game loop
 while True:
     # read turn data and update own ship accordingly
     turn_data = ServiceUtils.read_turn_data()
+    context_data.update_turn_data(turn_data)
     my_ship.update_turn_data(turn_data)
 
     # Read and analyse opponent order
@@ -20,3 +24,6 @@ while True:
         move_order = ServiceMovement.surface(board)
     orders = ServiceOrder.concatenate_order([move_order, attack_order, message_order])
     ServiceOrder.display_order(orders)
+
+    last_turn_data = turn_data
+    last_turn_data["orders"] = orders
