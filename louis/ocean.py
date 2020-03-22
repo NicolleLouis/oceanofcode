@@ -320,10 +320,14 @@ class ContextData(object):
         self.analyse_enemy_damage(enemy_ship)
 
     @staticmethod
-    def analyse_opponent_order(enemy_ship, move_order):
+    def analyse_opponent_move_order(enemy_ship, move_order):
         enemy_ship.delta_position = enemy_ship.delta_position.add_direction(
             ServiceOrder.get_direction_from_order(move_order)
         )
+
+    @staticmethod
+    def analyse_opponent_silence_order(enemy_ship):
+        pass
 
     @staticmethod
     def update_current_position(enemy_ship):
@@ -334,9 +338,12 @@ class ContextData(object):
     def read_opponent_order(self, enemy_ship):
         if self.current_turn_opponent_orders == "NA":
             return
+        silence_order = ServiceOrder.get_silence_order(self.current_turn_opponent_orders)
+        if silence_order:
+            self.analyse_opponent_silence_order(enemy_ship)
         move_order = ServiceOrder.get_move_order(self.current_turn_opponent_orders)
         if move_order:
-            self.analyse_opponent_order(enemy_ship, move_order)
+            self.analyse_opponent_move_order(enemy_ship, move_order)
         self.update_current_position(enemy_ship)
 
 
@@ -454,6 +461,14 @@ class ServiceOrder:
         list_orders = ServiceOrder.split_orders(orders)
         for order in list_orders:
             if order.find("MOVE") > -1:
+                return order
+        return False
+
+    @staticmethod
+    def get_silence_order(orders):
+        list_orders = ServiceOrder.split_orders(orders)
+        for order in list_orders:
+            if order.find("SILENCE") > -1:
                 return order
         return False
 
