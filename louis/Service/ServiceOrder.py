@@ -3,6 +3,10 @@ from louis.GameClass import Position
 
 class ServiceOrder:
     @staticmethod
+    def concatenate_move_and_recharge_order(move_order, recharge_order):
+        return "{} {}".format(move_order, recharge_order)
+
+    @staticmethod
     def split_orders(orders):
         return orders.split("|")
 
@@ -51,7 +55,7 @@ class ServiceOrder:
 
     @staticmethod
     def create_move_order(direction):
-        return "MOVE {} TORPEDO".format(direction)
+        return "MOVE {}".format(direction)
 
     @staticmethod
     def create_msg_order(msg):
