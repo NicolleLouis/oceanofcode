@@ -101,7 +101,12 @@ class ContextData(object):
 
     @staticmethod
     def analyse_opponent_silence_order(enemy_ship):
-        pass
+        initial_potential_position = enemy_ship.enemy_board.compute_number_of_potential_positions()
+        enemy_ship.reset_delta_position()
+        enemy_ship.enemy_board.reset_could_be_start()
+        enemy_ship.enemy_board.update_enemy_current_position(enemy_ship.delta_position)
+        final_potential_position = enemy_ship.enemy_board.compute_number_of_potential_positions()
+        ServiceUtils.print_log("From: {} To: {}".format(initial_potential_position, final_potential_position))
 
     @staticmethod
     def update_current_position(enemy_ship):

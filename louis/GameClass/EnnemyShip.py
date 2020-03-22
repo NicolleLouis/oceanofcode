@@ -13,6 +13,9 @@ class EnemyShip(object):
         )
         self.number_of_possible_positions = height*width
 
+    def reset_delta_position(self):
+        self.delta_position = Position(0, 0)
+
     def update_with_turn_data(self, context_data):
         self.life = context_data.current_turn_opp_life
 

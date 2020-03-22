@@ -157,7 +157,7 @@ class Board(object):
         number_of_positions = 0
         for x in range(self.width):
             for y in range(self.height):
-                if self.get_cell(Position(x,y)).can_be_enemy_position:
+                if self.get_cell(Position(x, y)).can_be_enemy_position:
                     number_of_positions += 1
         return number_of_positions
 
@@ -179,9 +179,13 @@ class Board(object):
             for y in range(self.height):
                 self.get_cell(Position(x=x, y=y)).reset_visit()
 
+    def reset_could_be_start(self):
+        for x in range(self.width):
+            for y in range(self.height):
+                cell = self.get_cell(Position(x=x, y=y))
+                cell.can_be_enemy_start = not cell.is_island
+
     def update_board_torpedo_did_not_hit_in_position(self, torpedo_position, delta_position):
-        # todo delete
-        previous_number_of_position = self.compute_number_of_potential_positions()
         torpedo_delta_range = [-1, 0, 1]
         for x in torpedo_delta_range:
             for y in torpedo_delta_range:
@@ -194,13 +198,6 @@ class Board(object):
                 if start_cell:
                     start_cell.cannot_be_enemy_start()
         self.update_enemy_current_position(delta_position)
-
-        # todo delete
-        new_number_of_position = self.compute_number_of_potential_positions()
-        ServiceUtils.print_log("from {} to {}".format(
-            previous_number_of_position,
-            new_number_of_position
-        ))
 
     def print_potential_position_board(self):
         for line in self.map:
@@ -219,7 +216,10 @@ class EnemyShip(object):
             width=width,
             lines=lines
         )
-        self.number_of_possible_positions = height*width
+        self.number_of_possible_positions = height * width
+
+    def reset_delta_position(self):
+        self.delta_position = Position(0, 0)
 
     def update_with_turn_data(self, context_data):
         self.life = context_data.current_turn_opp_life
@@ -327,7 +327,12 @@ class ContextData(object):
 
     @staticmethod
     def analyse_opponent_silence_order(enemy_ship):
-        pass
+        initial_potential_position = enemy_ship.enemy_board.compute_number_of_potential_positions()
+        enemy_ship.reset_delta_position()
+        enemy_ship.enemy_board.reset_could_be_start()
+        enemy_ship.enemy_board.update_enemy_current_position(enemy_ship.delta_position)
+        final_potential_position = enemy_ship.enemy_board.compute_number_of_potential_positions()
+        ServiceUtils.print_log("From: {} To: {}".format(initial_potential_position, final_potential_position))
 
     @staticmethod
     def update_current_position(enemy_ship):
