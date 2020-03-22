@@ -185,6 +185,35 @@ class Board(object):
                 cell = self.get_cell(Position(x=x, y=y))
                 cell.can_be_enemy_start = not cell.is_island
 
+    def update_possible_start_position_after_silence_from_current_position(self, position):
+        for x in range(-4, 4, 1):
+            delta_position = Position(x, 0)
+            new_position = position.add_position(delta_position)
+            cell_new_position = self.get_cell(new_position)
+            if cell_new_position:
+                cell_new_position.can_be_enemy_start = not cell_new_position.is_island
+        for y in range(-4, 4, 1):
+            delta_position = Position(0, y)
+            new_position = position.add_position(delta_position)
+            cell_new_position = self.get_cell(new_position)
+            if cell_new_position:
+                cell_new_position.can_be_enemy_start = not cell_new_position.is_island
+
+    def update_possible_position_after_silence(self):
+        self.set_could_be_start_false()
+        for x in range(self.width):
+            for y in range(self.height):
+                cell_position = Position(x=x, y=y)
+                cell = self.get_cell(cell_position)
+                if cell.can_be_enemy_position:
+                    self.update_possible_start_position_after_silence_from_current_position(cell_position)
+
+    def set_could_be_start_false(self):
+        for x in range(self.width):
+            for y in range(self.height):
+                cell = self.get_cell(Position(x=x, y=y))
+                cell.can_be_enemy_start = False
+
     def update_board_torpedo_did_not_hit_in_position(self, torpedo_position, delta_position):
         torpedo_delta_range = [-1, 0, 1]
         for x in torpedo_delta_range:
@@ -328,11 +357,14 @@ class ContextData(object):
     @staticmethod
     def analyse_opponent_silence_order(enemy_ship):
         initial_potential_position = enemy_ship.enemy_board.compute_number_of_potential_positions()
+
         enemy_ship.reset_delta_position()
-        enemy_ship.enemy_board.reset_could_be_start()
+        enemy_ship.enemy_board.update_possible_position_after_silence()
         enemy_ship.enemy_board.update_enemy_current_position(enemy_ship.delta_position)
+
         final_potential_position = enemy_ship.enemy_board.compute_number_of_potential_positions()
         ServiceUtils.print_log("From: {} To: {}".format(initial_potential_position, final_potential_position))
+        enemy_ship.enemy_board.print_potential_position_board()
 
     @staticmethod
     def update_current_position(enemy_ship):
