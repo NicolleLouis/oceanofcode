@@ -18,15 +18,3 @@ class EnemyShip(object):
 
     def update_number_of_possible_positions(self):
         self.number_of_possible_positions = self.enemy_board.compute_number_of_potential_positions()
-
-    def read_opponent_order(self, opponent_orders):
-        if opponent_orders == "NA":
-            return
-        move_order = ServiceOrder.get_move_order(opponent_orders)
-        if move_order:
-            self.delta_position = self.delta_position.add_direction(
-                ServiceOrder.get_direction_from_order(move_order)
-            )
-        self.enemy_board.update_enemy_potential_start_position(self.delta_position)
-        self.enemy_board.update_enemy_current_position(self.delta_position)
-        self.update_number_of_possible_positions()

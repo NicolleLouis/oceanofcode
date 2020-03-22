@@ -92,3 +92,23 @@ class ContextData(object):
 
     def analyse_custom_fields(self, enemy_ship):
         self.analyse_enemy_damage(enemy_ship)
+
+    @staticmethod
+    def analyse_opponent_order(enemy_ship, move_order):
+        enemy_ship.delta_position = enemy_ship.delta_position.add_direction(
+            ServiceOrder.get_direction_from_order(move_order)
+        )
+
+    @staticmethod
+    def update_current_position(enemy_ship):
+        enemy_ship.enemy_board.update_enemy_potential_start_position(enemy_ship.delta_position)
+        enemy_ship.enemy_board.update_enemy_current_position(enemy_ship.delta_position)
+        enemy_ship.update_number_of_possible_positions()
+
+    def read_opponent_order(self, enemy_ship):
+        if self.current_turn_opponent_orders == "NA":
+            return
+        move_order = ServiceOrder.get_move_order(self.current_turn_opponent_orders)
+        if move_order:
+            self.analyse_opponent_order(enemy_ship, move_order)
+        self.update_current_position(enemy_ship)

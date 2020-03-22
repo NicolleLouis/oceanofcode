@@ -15,7 +15,7 @@ while True:
     enemy_ship.update_with_turn_data(context_data)
 
     # Read and analyse opponent order
-    enemy_ship.read_opponent_order(context_data.current_turn_opponent_orders)
+    context_data.read_opponent_order(enemy_ship)
 
     move_order = ServiceMovement.chose_movement_and_move(my_ship, board)
     attack_order = ServiceTorpedo.chose_torpedo(my_ship, enemy_ship)
