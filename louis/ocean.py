@@ -9,6 +9,12 @@ class Position(object):
         self.x = x
         self.y = y
 
+    def invert_position(self):
+        return Position(
+            x=self.x * -1,
+            y=self.y * -1
+        )
+
     def get_distance(self, position):
         return abs(self.x - position.x) + abs(self.y - position.y)
 
@@ -27,8 +33,8 @@ class Position(object):
 
     def add_position(self, position):
         return Position(
-            x=self.x + position.x,
-            y=self.y + position.y
+            x=int(self.x) + int(position.x),
+            y=int(self.y) + int(position.y)
         )
 
     def __str__(self):
@@ -139,7 +145,7 @@ class Board(object):
                 available_direction += 1
         return available_direction == 0
 
-    def update_enemy_start_position(self, delta_position):
+    def update_enemy_potential_start_position(self, delta_position):
         for x in range(self.width):
             for y in range(self.height):
                 start_position = Position(x, y)
@@ -160,10 +166,7 @@ class Board(object):
             for y in range(self.height):
                 current_position = Position(x, y)
                 start_position = current_position.add_position(
-                    Position(
-                        x=-1 * delta_position.x,
-                        y=-1 * delta_position.y
-                    )
+                    delta_position.invert_position()
                 )
                 if not self.get_cell(start_position):
                     self.get_cell(current_position).can_be_enemy_position = False
@@ -175,6 +178,29 @@ class Board(object):
         for x in range(self.width):
             for y in range(self.height):
                 self.get_cell(Position(x=x, y=y)).reset_visit()
+
+    def update_board_torpedo_did_not_hit_in_position(self, torpedo_position, delta_position):
+        # todo delete
+        previous_number_of_position = self.compute_number_of_potential_positions()
+        torpedo_delta_range = [-1, 0, 1]
+        for x in torpedo_delta_range:
+            for y in torpedo_delta_range:
+                torpedo_delta_position = Position(x, y)
+                current_position_without_enemy_boat = torpedo_position.add_position(torpedo_delta_position)
+                start_position_without_enemy_boat = current_position_without_enemy_boat.add_position(
+                    delta_position.invert_position()
+                )
+                start_cell = self.get_cell(start_position_without_enemy_boat)
+                if start_cell:
+                    start_cell.cannot_be_enemy_start()
+        self.update_enemy_current_position(delta_position)
+
+        # todo delete
+        new_number_of_position = self.compute_number_of_potential_positions()
+        ServiceUtils.print_log("from {} to {}".format(
+            previous_number_of_position,
+            new_number_of_position
+        ))
 
     def print_potential_position_board(self):
         for line in self.map:
@@ -193,7 +219,7 @@ class EnemyShip(object):
             width=width,
             lines=lines
         )
-        self.number_of_possible_positions = height * width
+        self.number_of_possible_positions = height*width
 
     def update_with_turn_data(self, context_data):
         self.life = context_data.current_turn_opp_life
@@ -201,22 +227,22 @@ class EnemyShip(object):
     def update_number_of_possible_positions(self):
         self.number_of_possible_positions = self.enemy_board.compute_number_of_potential_positions()
 
-    def read_opponent_order(self, opponent_order):
-        if opponent_order == "NA":
+    def read_opponent_order(self, opponent_orders):
+        if opponent_orders == "NA":
             return
-        list_opponent_order = opponent_order.split("|")
-        move_order = ServiceOrder.get_move_order(list_opponent_order)
+        move_order = ServiceOrder.get_move_order(opponent_orders)
         if move_order:
             self.delta_position = self.delta_position.add_direction(
                 ServiceOrder.get_direction_from_order(move_order)
             )
-        self.enemy_board.update_enemy_start_position(self.delta_position)
+        self.enemy_board.update_enemy_potential_start_position(self.delta_position)
         self.enemy_board.update_enemy_current_position(self.delta_position)
         self.update_number_of_possible_positions()
 
 
 class ContextData(object):
     def __init__(self):
+        # Current turn game input
         self.current_turn_x = None
         self.current_turn_y = None
         self.current_turn_my_life = None
@@ -227,6 +253,7 @@ class ContextData(object):
         self.current_turn_sonar_result = None
         self.current_turn_opponent_orders = None
 
+        # Last turn game input
         self.last_turn_turn_x = None
         self.last_turn_turn_y = None
         self.last_turn_turn_my_life = None
@@ -236,9 +263,14 @@ class ContextData(object):
         self.last_turn_turn_silence_cooldown = None
         self.last_turn_turn_sonar_result = None
         self.last_turn_turn_opponent_orders = None
+
+        # Last turn game output
         self.last_turn_own_orders = None
 
-    def update_turn_data(self, turn_data):
+        # computed field
+        self.enemy_was_damaged = None
+
+    def update_turn_data(self, turn_data, enemy_ship):
         self.current_turn_x = turn_data["x"]
         self.current_turn_y = turn_data["y"]
         self.current_turn_my_life = turn_data["my_life"]
@@ -248,6 +280,8 @@ class ContextData(object):
         self.current_turn_silence_cooldown = turn_data["silence_cooldown"]
         self.current_turn_sonar_result = turn_data["sonar_result"]
         self.current_turn_opponent_orders = turn_data["opponent_orders"]
+
+        self.analyse_turn_data(enemy_ship)
 
     def update_end_of_turn_data(self, orders):
         self.last_turn_turn_x = self.current_turn_x
@@ -261,6 +295,41 @@ class ContextData(object):
         self.last_turn_turn_opponent_orders = self.current_turn_opponent_orders
 
         self.last_turn_own_orders = orders
+
+    def analyse_turn_data(self, enemy_ship):
+        self.compute_custom_fields()
+        self.analyse_custom_fields(enemy_ship)
+
+    def compute_enemy_was_damaged(self):
+        if self.current_turn_opp_life is not None and self.last_turn_turn_opp_life is not None:
+            self.enemy_was_damaged = not (
+                    self.current_turn_opp_life == self.last_turn_turn_opp_life
+            )
+        else:
+            self.enemy_was_damaged = None
+
+    def analyse_enemy_damage(self, enemy_ship):
+        # TODO: Case damage taken -> guess if it's for own torpedo or not
+        if self.enemy_was_damaged:
+            return
+        # Case first turn
+        if self.last_turn_own_orders is None:
+            return
+            # case damage taken but not because of our own torpedo (Surface or enemy torpedo)
+        if not ServiceOrder.get_attack_order(self.last_turn_own_orders):
+            return
+        attack_order = ServiceOrder.get_attack_order(self.last_turn_own_orders)
+        position_torpedo = ServiceOrder.get_position_from_attack_order(attack_order)
+        enemy_ship.enemy_board.update_board_torpedo_did_not_hit_in_position(
+            position_torpedo,
+            enemy_ship.delta_position
+        )
+
+    def compute_custom_fields(self):
+        self.compute_enemy_was_damaged()
+
+    def analyse_custom_fields(self, enemy_ship):
+        self.analyse_enemy_damage(enemy_ship)
 
 
 class ServiceUtils:
@@ -355,7 +424,26 @@ class ServiceMovement:
 
 class ServiceOrder:
     @staticmethod
-    def get_move_order(list_orders):
+    def split_orders(orders):
+        return orders.split("|")
+
+    @staticmethod
+    def get_attack_order(orders):
+        list_orders = ServiceOrder.split_orders(orders)
+        for order in list_orders:
+            if order.find("TORPEDO") > -1 and order.find("MOVE") == -1:
+                return order
+        return False
+
+    @staticmethod
+    def get_position_from_attack_order(attack_order):
+        coordinates = attack_order.replace("TORPEDO ", "")
+        list_coordinate = coordinates.split(" ")
+        return Position(list_coordinate[0], list_coordinate[1])
+
+    @staticmethod
+    def get_move_order(orders):
+        list_orders = ServiceOrder.split_orders(orders)
         for order in list_orders:
             if order.find("MOVE") > -1:
                 return order
@@ -449,24 +537,24 @@ class ServiceTorpedo:
 #################
 #################
 # Init
-global_data, board, ennemy_ship, my_ship = ServiceUtils.init()
+global_data, board, enemy_ship, my_ship = ServiceUtils.init()
 
 context_data = ContextData()
 
 # game loop
 while True:
-    # read turn data and update own ship accordingly
+    # read turn data and analysis
     turn_data = ServiceUtils.read_turn_data()
-    context_data.update_turn_data(turn_data)
+    context_data.update_turn_data(turn_data, enemy_ship)
     my_ship.update_with_turn_data(context_data)
-    ennemy_ship.update_with_turn_data(context_data)
+    enemy_ship.update_with_turn_data(context_data)
 
     # Read and analyse opponent order
-    ennemy_ship.read_opponent_order(context_data.current_turn_opponent_orders)
+    enemy_ship.read_opponent_order(context_data.current_turn_opponent_orders)
 
     move_order = ServiceMovement.chose_movement_and_move(my_ship, board)
-    attack_order = ServiceTorpedo.chose_torpedo(my_ship, ennemy_ship)
-    message_order = ServiceOrder.create_number_of_possible_position_order(ennemy_ship)
+    attack_order = ServiceTorpedo.chose_torpedo(my_ship, enemy_ship)
+    message_order = ServiceOrder.create_number_of_possible_position_order(enemy_ship)
     if not move_order:
         move_order = ServiceMovement.surface(board)
     orders = ServiceOrder.concatenate_order([move_order, attack_order, message_order])

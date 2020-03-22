@@ -45,7 +45,7 @@ class Board(object):
                 available_direction += 1
         return available_direction == 0
 
-    def update_enemy_start_position(self, delta_position):
+    def update_enemy_potential_start_position(self, delta_position):
         for x in range(self.width):
             for y in range(self.height):
                 start_position = Position(x, y)
@@ -66,10 +66,7 @@ class Board(object):
             for y in range(self.height):
                 current_position = Position(x, y)
                 start_position = current_position.add_position(
-                    Position(
-                        x=-1 * delta_position.x,
-                        y=-1 * delta_position.y
-                    )
+                    delta_position.invert_position()
                 )
                 if not self.get_cell(start_position):
                     self.get_cell(current_position).can_be_enemy_position = False
@@ -81,6 +78,29 @@ class Board(object):
         for x in range(self.width):
             for y in range(self.height):
                 self.get_cell(Position(x=x, y=y)).reset_visit()
+
+    def update_board_torpedo_did_not_hit_in_position(self, torpedo_position, delta_position):
+        # todo delete
+        previous_number_of_position = self.compute_number_of_potential_positions()
+        torpedo_delta_range = [-1, 0, 1]
+        for x in torpedo_delta_range:
+            for y in torpedo_delta_range:
+                torpedo_delta_position = Position(x, y)
+                current_position_without_enemy_boat = torpedo_position.add_position(torpedo_delta_position)
+                start_position_without_enemy_boat = current_position_without_enemy_boat.add_position(
+                    delta_position.invert_position()
+                )
+                start_cell = self.get_cell(start_position_without_enemy_boat)
+                if start_cell:
+                    start_cell.cannot_be_enemy_start()
+        self.update_enemy_current_position(delta_position)
+
+        # todo delete
+        new_number_of_position = self.compute_number_of_potential_positions()
+        ServiceUtils.print_log("from {} to {}".format(
+            previous_number_of_position,
+            new_number_of_position
+        ))
 
     def print_potential_position_board(self):
         for line in self.map:

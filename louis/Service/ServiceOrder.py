@@ -1,6 +1,28 @@
+from louis.GameClass import Position
+
+
 class ServiceOrder:
     @staticmethod
-    def get_move_order(list_orders):
+    def split_orders(orders):
+        return orders.split("|")
+
+    @staticmethod
+    def get_attack_order(orders):
+        list_orders = ServiceOrder.split_orders(orders)
+        for order in list_orders:
+            if order.find("TORPEDO") > -1 and order.find("MOVE") == -1:
+                return order
+        return False
+
+    @staticmethod
+    def get_position_from_attack_order(attack_order):
+        coordinates = attack_order.replace("TORPEDO ", "")
+        list_coordinate = coordinates.split(" ")
+        return Position(list_coordinate[0], list_coordinate[1])
+
+    @staticmethod
+    def get_move_order(orders):
+        list_orders = ServiceOrder.split_orders(orders)
         for order in list_orders:
             if order.find("MOVE") > -1:
                 return order
