@@ -1,1 +1,3 @@
-directions = ["N", "W", "E", "S"]
+DIRECTIONS = ["N", "W", "E", "S"]
+MOVE = "MOVE"
+SILENCE = "SILENCE"

@@ -1,7 +1,9 @@
 import sys
 import random
 
-directions = ["N", "W", "E", "S"]
+DIRECTIONS = ["N", "W", "E", "S"]
+MOVE = "MOVE"
+SILENCE = "SILENCE"
 
 
 class Position(object):
@@ -139,7 +141,7 @@ class Board(object):
 
     def is_position_dead_end(self, position):
         available_direction = 0
-        for direction in directions:
+        for direction in DIRECTIONS:
             new_position = position.add_direction(direction)
             if self.is_position_valid_for_move(new_position):
                 available_direction += 1
@@ -443,6 +445,10 @@ class ServiceUtils:
 
 class ServiceMovement:
     @staticmethod
+    def chose_locomotion(context_data):
+        return MOVE if context_data.current_turn_silence_cooldown > 0 else SILENCE
+
+    @staticmethod
     def is_move_possible_in_direction(ship, direction, board):
         next_position = ship.get_position_after_move(direction)
         return board.is_position_valid_for_move(next_position)
@@ -451,24 +457,23 @@ class ServiceMovement:
     def move_my_ship(ship, direction, board):
         board.get_cell(position=ship.position).has_been_visited()
         ship.direction = direction
-        move_order = ServiceOrder.create_move_order(direction)
+        move_order = ServiceOrder.create_direction_order(direction)
         return move_order
 
     @staticmethod
     def random_direction():
-        return random.choice(directions)
+        return random.choice(DIRECTIONS)
 
     @staticmethod
     def should_surface(ship, board):
         return board.is_position_dead_end(ship.position)
 
     @classmethod
-    def chose_movement(cls, ship, board):
+    def chose_direction(cls, ship, board):
         direction = cls.random_direction()
         while not cls.is_move_possible_in_direction(ship, direction, board):
             direction = cls.random_direction()
-        move_order = ServiceOrder.create_move_order(direction)
-        return move_order
+        return direction
 
     @staticmethod
     def surface(board):
@@ -479,6 +484,8 @@ class ServiceMovement:
 class ServiceOrder:
     @staticmethod
     def concatenate_move_and_recharge_order(move_order, recharge_order):
+        if move_order.find("SILENCE") > -1:
+            return move_order
         return "{} {}".format(move_order, recharge_order)
 
     @staticmethod
@@ -529,10 +536,6 @@ class ServiceOrder:
         print(order)
 
     @staticmethod
-    def create_move_order(direction):
-        return "MOVE {}".format(direction)
-
-    @staticmethod
     def create_msg_order(msg):
         return "MSG {}".format(msg)
 
@@ -540,11 +543,18 @@ class ServiceOrder:
     def create_attack_order(position):
         return "TORPEDO {} {}".format(position.x, position.y)
 
-    @classmethod
-    def create_number_of_possible_position_order(cls, enemy_ship):
-        return cls.create_msg_order(
+    @staticmethod
+    def create_number_of_possible_position_order(enemy_ship):
+        return ServiceOrder.create_msg_order(
             enemy_ship.number_of_possible_positions
         )
+
+    @staticmethod
+    def concatenate_direction_and_locomotion(direction_order, locomotion_order):
+        if locomotion_order == MOVE:
+            return "{} {}".format(locomotion_order, direction_order)
+        else:
+            return "{} {} 1".format(locomotion_order, direction_order)
 
 
 class ServiceTorpedo:
@@ -556,7 +566,7 @@ class ServiceTorpedo:
             ship,
             enemy_ship
         )
-        possible_attack_position = ServiceTorpedo.find_position_in_range_with_potential_enemy(
+        possible_attack_position = ServiceTorpedo. find_position_in_range_with_potential_enemy(
             within_range_positions,
             enemy_ship
         )
@@ -636,7 +646,9 @@ while True:
 
     should_surface = ServiceMovement.should_surface(my_ship, board)
     if not should_surface:
-        move_order = ServiceMovement.chose_movement(my_ship, board)
+        direction_order = ServiceMovement.chose_direction(my_ship, board)
+        locomotion_order = ServiceMovement.chose_locomotion(context_data)
+        move_order = ServiceOrder.concatenate_direction_and_locomotion(direction_order, locomotion_order)
         recharge_order = ServiceRecharge.chose_recharge(context_data)
         move_and_recharge_order = ServiceOrder.concatenate_move_and_recharge_order(
             move_order=move_order,
@@ -646,7 +658,7 @@ while True:
         move_and_recharge_order = ServiceMovement.surface(board)
     attack_order = ServiceTorpedo.chose_torpedo(my_ship, enemy_ship)
     message_order = ServiceOrder.create_number_of_possible_position_order(enemy_ship)
-    orders = ServiceOrder.concatenate_order([move_and_recharge_order, attack_order, message_order])
+    orders = ServiceOrder.concatenate_order([attack_order, move_and_recharge_order, message_order])
     ServiceOrder.display_order(orders)
 
     context_data.update_end_of_turn_data(orders)

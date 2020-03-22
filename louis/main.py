@@ -1,4 +1,5 @@
 from Service import ServiceRecharge
+from constants import SILENCE
 from louis.GameClass import Position, ContextData
 from louis.Service import ServiceUtils, ServiceMovement, ServiceOrder, ServiceTorpedo
 
@@ -20,7 +21,9 @@ while True:
 
     should_surface = ServiceMovement.should_surface(my_ship, board)
     if not should_surface:
-        move_order = ServiceMovement.chose_movement(my_ship, board)
+        direction_order = ServiceMovement.chose_direction(my_ship, board)
+        locomotion_order = ServiceMovement.chose_locomotion(context_data)
+        move_order = ServiceOrder.concatenate_direction_and_locomotion(direction_order, locomotion_order)
         recharge_order = ServiceRecharge.chose_recharge(context_data)
         move_and_recharge_order = ServiceOrder.concatenate_move_and_recharge_order(
             move_order=move_order,
@@ -30,7 +33,7 @@ while True:
         move_and_recharge_order = ServiceMovement.surface(board)
     attack_order = ServiceTorpedo.chose_torpedo(my_ship, enemy_ship)
     message_order = ServiceOrder.create_number_of_possible_position_order(enemy_ship)
-    orders = ServiceOrder.concatenate_order([move_and_recharge_order, attack_order, message_order])
+    orders = ServiceOrder.concatenate_order([attack_order, move_and_recharge_order, message_order])
     ServiceOrder.display_order(orders)
 
     context_data.update_end_of_turn_data(orders)

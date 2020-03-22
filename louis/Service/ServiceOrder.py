@@ -1,9 +1,12 @@
+from constants import MOVE
 from louis.GameClass import Position
 
 
 class ServiceOrder:
     @staticmethod
     def concatenate_move_and_recharge_order(move_order, recharge_order):
+        if move_order.find("SILENCE") > -1:
+            return move_order
         return "{} {}".format(move_order, recharge_order)
 
     @staticmethod
@@ -54,10 +57,6 @@ class ServiceOrder:
         print(order)
 
     @staticmethod
-    def create_move_order(direction):
-        return "MOVE {}".format(direction)
-
-    @staticmethod
     def create_msg_order(msg):
         return "MSG {}".format(msg)
 
@@ -65,8 +64,15 @@ class ServiceOrder:
     def create_attack_order(position):
         return "TORPEDO {} {}".format(position.x, position.y)
 
-    @classmethod
-    def create_number_of_possible_position_order(cls, enemy_ship):
-        return cls.create_msg_order(
+    @staticmethod
+    def create_number_of_possible_position_order(enemy_ship):
+        return ServiceOrder.create_msg_order(
             enemy_ship.number_of_possible_positions
         )
+
+    @staticmethod
+    def concatenate_direction_and_locomotion(direction_order, locomotion_order):
+        if locomotion_order == MOVE:
+            return "{} {}".format(locomotion_order, direction_order)
+        else:
+            return "{} {} 1".format(locomotion_order, direction_order)

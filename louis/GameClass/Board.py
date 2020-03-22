@@ -1,6 +1,6 @@
 from louis.GameClass import Cell, Position
 from louis.Service import ServiceUtils
-from louis.constants import directions
+from louis.constants import DIRECTIONS
 
 
 class Board(object):
@@ -39,7 +39,7 @@ class Board(object):
 
     def is_position_dead_end(self, position):
         available_direction = 0
-        for direction in directions:
+        for direction in DIRECTIONS:
             new_position = position.add_direction(direction)
             if self.is_position_valid_for_move(new_position):
                 available_direction += 1
