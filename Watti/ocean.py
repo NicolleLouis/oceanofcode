@@ -8,7 +8,8 @@ class Ship(object):
     def __init__(self):
         self.x = 0
         self.y = 0
-        self.past_moves = []
+        self.possible_start_cells = []
+        self.possible_cells = []
         self.dx = 0
         self.dy = 0
         self.torpedo_cooldown = -1
@@ -50,12 +51,12 @@ class Ship(object):
             return "SURFACE"
 
     def best_attack_action(self, board):
-        for cell in board.possible_enemy_cells:
+        for cell in board.enemy_ship.possible_cells:
             distance_to_cell = board.get_distance(board.get_cell(self.x, self.y), cell)
             # TODO: add probability based on how many cells in the area
             # we don't shoot next to us unless we're sure to hit them
             if self.torpedo_cooldown == 0\
-                and ((distance_to_cell == 1 and len(board.possible_enemy_cells)==1)\
+                and ((distance_to_cell == 1 and len(board.enemy_ship.possible_cells)==1)\
                     or (distance_to_cell <= 4 and distance_to_cell > 1)\
                 ):
                     return "TORPEDO " + str(cell.x) + " " + str(cell.y)
@@ -81,6 +82,29 @@ class Ship(object):
         if "MOVE W" in action:
             self.dx -= 1
 
+    def update_possible_start_cells(self, board):
+        dx = self.dx
+        dy = self.dy
+        for cell_line in board.map:
+            for cell in cell_line:
+                if board.get_cell_from_vector(cell, dx, dy).is_island:
+                    try:
+                        self.possible_start_cells.remove(cell)
+                    # out of bounds cell will raise exceptions
+                    except:
+                        pass
+
+    def update_possible_cells(self, board):
+        dx = self.dx
+        dy = self.dy
+        self.update_possible_start_cells(board)
+        possible_cells = []
+        for cell_line in board.map:
+            for cell in cell_line:
+                if cell in self.possible_start_cells:
+                    possible_cells.append(board.get_cell_from_vector(cell, dx, dy))
+        self.possible_cells = possible_cells
+
 
     def __str__(self):
         return "x: {} / y: {}".format(self.x, self.y)
@@ -104,22 +128,22 @@ class Cell(object):
 
 
 class Board(object):
-    def __init__(self, height, width, lines):
+    def __init__(self, height, width, lines, my_ship, enemy_ship):
         self.height = height
         self.width = width
         self.map = []
-        self.islands = []
-        self.possible_enemy_starting_cells = []
-        self.possible_enemy_cells = []
+        self.my_ship = my_ship
+        self.enemy_ship = enemy_ship
         for y, line in enumerate(lines):
             cell_line = []
             for x, char in enumerate(line):
                 cell = Cell(x, y, char == "x")
                 cell_line.append(cell)
                 if char == "x":
-                    self.islands.append(cell)
+                    pass
                 else:
-                    self.possible_enemy_starting_cells.append(cell)
+                    my_ship.possible_start_cells.append(cell)
+                    enemy_ship.possible_start_cells.append(cell)
             self.map.append(cell_line)
 
 
@@ -172,29 +196,6 @@ class Board(object):
 
     def get_cell_from_vector(self, cell, dx, dy):
         return self.get_cell(cell.x + dx, cell.y + dy)
-
-    def update_possible_starting_cells(self, enemy_ship):
-        dx = enemy_ship.dx
-        dy = enemy_ship.dy
-        for cell_line in self.map:
-            for cell in cell_line:
-                if self.get_cell_from_vector(cell, dx, dy).is_island:
-                    try:
-                        self.possible_enemy_starting_cells.remove(cell)
-                    # out of bounds cell will raise exceptions
-                    except:
-                        pass
-
-    def update_possible_enemy_cells(self, enemy_ship):
-        dx = enemy_ship.dx
-        dy = enemy_ship.dy
-        self.update_possible_starting_cells(enemy_ship)
-        possible_cells = []
-        for cell_line in self.map:
-            for cell in cell_line:
-                if cell in self.possible_enemy_starting_cells:
-                    possible_cells.append(self.get_cell_from_vector(cell, dx, dy))
-        self.possible_enemy_cells = possible_cells
 
     # to do: add pathing algo, to compute real distance.
     def get_distance(self, cell1, cell2):
@@ -257,14 +258,15 @@ def choose_starting_cell(ship, board):
 # Read global input
 global_data = read_global_data()
 
+my_ship = Ship()
+enemy_ship = Ship()
 board = Board(
     height=global_data["height"],
     width=global_data["width"],
-    lines=global_data["lines"]
+    lines=global_data["lines"],
+    my_ship=my_ship,
+    enemy_ship=enemy_ship
 )
-
-my_ship = Ship()
-enemy_ship = Ship()
 choose_starting_cell(my_ship, board)
 
 # game loop
@@ -277,7 +279,7 @@ while True:
     my_ship_cell.visit()
     enemy_orders = turn_data['enemy_orders']
     enemy_ship.update_enemy_action(enemy_orders)
-    board.update_possible_enemy_cells(enemy_ship)
+    enemy_ship.update_possible_cells(board)
 
     best_action = my_ship.best_action(board)
     print(my_ship.do_actions(best_action))
