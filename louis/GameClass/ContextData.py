@@ -107,6 +107,21 @@ class ContextData(object):
         )
 
     @staticmethod
+    def extract_sector_from_opponent_surface_order(surface_order):
+        return int(surface_order.replace("SURFACE ", ""))
+
+    @staticmethod
+    def analyse_opponent_surface_order(enemy_ship, surface_order):
+        previous_number = enemy_ship.enemy_board.compute_number_of_potential_positions()
+
+        sector = ContextData.extract_sector_from_opponent_surface_order(surface_order)
+        enemy_ship.enemy_board.enemy_not_in_sector(sector)
+        enemy_ship.enemy_board.update_enemy_potential_start_position(enemy_ship.delta_position)
+
+        next_number = enemy_ship.enemy_board.compute_number_of_potential_positions()
+        ServiceUtils.print_log("From: {} To: {}".format(previous_number, next_number))
+
+    @staticmethod
     def analyse_opponent_silence_order(enemy_ship):
         enemy_ship.reset_delta_position()
         enemy_ship.enemy_board.update_possible_position_after_silence()
@@ -114,7 +129,7 @@ class ContextData(object):
 
     @staticmethod
     def update_current_position(enemy_ship):
-        enemy_ship.enemy_board.update_enemy_potential_start_position(enemy_ship.delta_position)
+        enemy_ship.enemy_board.update_enemy_potential_start_position_from_geography(enemy_ship.delta_position)
         enemy_ship.enemy_board.update_enemy_current_position(enemy_ship.delta_position)
         enemy_ship.update_number_of_possible_positions()
 
@@ -127,4 +142,7 @@ class ContextData(object):
         move_order = ServiceOrder.get_move_order(self.current_turn_opponent_orders)
         if move_order:
             self.analyse_opponent_move_order(enemy_ship, move_order)
+        surface_order = ServiceOrder.get_surface_order(self.current_turn_opponent_orders)
+        if surface_order:
+            self.analyse_opponent_surface_order(enemy_ship, surface_order)
         self.update_current_position(enemy_ship)

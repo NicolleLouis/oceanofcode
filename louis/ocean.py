@@ -165,6 +165,13 @@ class Board(object):
         except IndexError:
             return False
 
+    def enemy_not_in_sector(self, sector):
+        for x in range(self.width):
+            for y in range(self.height):
+                cell = self.get_cell(Position(x, y))
+                if cell.sector != sector:
+                    cell.can_be_enemy_position = False
+
     def is_position_dead_end(self, position):
         available_direction = 0
         for direction in DIRECTIONS:
@@ -173,13 +180,23 @@ class Board(object):
                 available_direction += 1
         return available_direction == 0
 
-    def update_enemy_potential_start_position(self, delta_position):
+    def update_enemy_potential_start_position_from_geography(self, delta_position):
         for x in range(self.width):
             for y in range(self.height):
                 start_position = Position(x, y)
                 current_position = start_position.add_position(delta_position)
                 if not self.is_position_valid_for_enemy(current_position):
                     self.get_cell(start_position).cannot_be_enemy_start()
+
+    def update_enemy_potential_start_position(self, delta_position):
+        for x in range(self.width):
+            for y in range(self.height):
+                start_position = Position(x, y)
+                current_position = start_position.add_position(delta_position)
+                cell = self.get_cell(current_position)
+                if cell:
+                    if not self.get_cell(current_position).can_be_enemy_position:
+                        self.get_cell(start_position).cannot_be_enemy_start()
 
     def compute_number_of_potential_positions(self):
         number_of_positions = 0
@@ -389,6 +406,21 @@ class ContextData(object):
         )
 
     @staticmethod
+    def extract_sector_from_opponent_surface_order(surface_order):
+        return int(surface_order.replace("SURFACE ", ""))
+
+    @staticmethod
+    def analyse_opponent_surface_order(enemy_ship, surface_order):
+        previous_number = enemy_ship.enemy_board.compute_number_of_potential_positions()
+
+        sector = ContextData.extract_sector_from_opponent_surface_order(surface_order)
+        enemy_ship.enemy_board.enemy_not_in_sector(sector)
+        enemy_ship.enemy_board.update_enemy_potential_start_position(enemy_ship.delta_position)
+
+        next_number = enemy_ship.enemy_board.compute_number_of_potential_positions()
+        ServiceUtils.print_log("From: {} To: {}".format(previous_number, next_number))
+
+    @staticmethod
     def analyse_opponent_silence_order(enemy_ship):
         enemy_ship.reset_delta_position()
         enemy_ship.enemy_board.update_possible_position_after_silence()
@@ -396,7 +428,7 @@ class ContextData(object):
 
     @staticmethod
     def update_current_position(enemy_ship):
-        enemy_ship.enemy_board.update_enemy_potential_start_position(enemy_ship.delta_position)
+        enemy_ship.enemy_board.update_enemy_potential_start_position_from_geography(enemy_ship.delta_position)
         enemy_ship.enemy_board.update_enemy_current_position(enemy_ship.delta_position)
         enemy_ship.update_number_of_possible_positions()
 
@@ -409,6 +441,9 @@ class ContextData(object):
         move_order = ServiceOrder.get_move_order(self.current_turn_opponent_orders)
         if move_order:
             self.analyse_opponent_move_order(enemy_ship, move_order)
+        surface_order = ServiceOrder.get_surface_order(self.current_turn_opponent_orders)
+        if surface_order:
+            self.analyse_opponent_surface_order(enemy_ship, surface_order)
         self.update_current_position(enemy_ship)
 
 
@@ -537,6 +572,14 @@ class ServiceOrder:
         list_orders = ServiceOrder.split_orders(orders)
         for order in list_orders:
             if order.find("MOVE") > -1:
+                return order
+        return False
+
+    @staticmethod
+    def get_surface_order(orders):
+        list_orders = ServiceOrder.split_orders(orders)
+        for order in list_orders:
+            if order.find("SURFACE") > -1:
                 return order
         return False
 
