@@ -5,7 +5,8 @@ import sys
 directions = ["E", "S", "W", "N"]
 
 class Ship(object):
-    def __init__(self):
+    # TODO: manage path of enemy ship to rule out silence possibilities
+    def __init__(self, is_my_ship):
         self.x = 0
         self.y = 0
         self.possible_start_cells = []
@@ -13,26 +14,88 @@ class Ship(object):
         self.dx = 0
         self.dy = 0
         self.torpedo_cooldown = -1
+        self.known_path = []
+        self.is_my_ship = is_my_ship
+
+    def get_possible_silence(self, board):
+        # blockers will define maximum reach of the silence. By definition <= 4
+        # TODO: check if we don't have issues in order of interpretation with MOVE + SILENCE
+        blocker_north = 4
+        blocker_east = 4
+        blocker_south = 4
+        blocker_west = 4
+        previous_position = [0, 0]
+        for vector in known_path:
+            previous_position = [coord for coord in zip(previous_position, vector)]
+            previous_x = previous_position[0]
+            previous_y = previous_position[1]
+            if x == 0:
+                if y > 0:
+                    blocker_south = math.min(blocker_south, y)
+                else:
+                    blocker_north = math.min(blocker_north, -y)
+            if y == 0:
+                if x > 0:
+                    blocker_east = math.min(blocker_east, x)
+                else:
+                    blocker_west = math.min(blocker_west, -x)
+
+        for dx in range(-4,5):
+            if board.get_cell(self.x + dx, self.y).is_island:
+                if dx > 0:
+                    blocker_east = math.min(blocker_east, dx)
+                else:
+                    blocker_west = math.min(blocker_west, -dx)
+
+        for dy in range(-4,5):
+            if board.get_cell(self.x, self.y + dy).is_island:
+                if dy > 0:
+                    blocker_south = math.min(blocker_south, dy)
+                else:
+                    blocker_north = math.min(blocker_north, -dy)
+
+        possible_silences = []
+        for x in range(blocker_east):
+            possible_silences.append([0, x])
+        for x in range(blocker_west):
+            possible_silences.append([0, -x])
+        for y in range(blocker_south):
+            possible_silences.append([0, y])
+        for x in range(blocker_north):
+            possible_silences.append([0, -y])
+
+        return possible_silences
+
 
     def do_actions(self, action):
         if "MOVE N" in action:
             self.y -= 1
             self.dy -= 1
+            self.known_path = [0,-1] + self.known_path
 
         if "MOVE E" in action:
             self.x += 1
             self.dx += 1
+            self.known_path = [1,0] + self.known_path
 
         if "MOVE S" in action:
             self.y += 1
             self.dy += 1
+            self.known_path = [0,1] + self.known_path
 
         if "MOVE W" in action:
             self.x -= 1
             self.dx -= 1
+            self.known_path = [-1,0] + self.known_path
 
-        if action == "SURFACE":
-            board.clear_visits()
+        if "SURFACE" in action:
+            # filter out
+            self.known_path = []
+            if self.is_my_ship:
+                board.clear_visits()
+
+        if "SILENCE" in action:
+            pass
 
         return action
 
@@ -68,19 +131,6 @@ class Ship(object):
             return self.best_move_action(board)
         else:
             return best_attack
-
-    def update_enemy_action(self, action):
-        if "MOVE N" in action:
-            self.dy -= 1
-
-        if "MOVE E" in action:
-            self.dx += 1
-
-        if "MOVE S" in action:
-            self.dy += 1
-
-        if "MOVE W" in action:
-            self.dx -= 1
 
     def update_possible_start_cells(self, board):
         dx = self.dx
@@ -258,8 +308,8 @@ def choose_starting_cell(ship, board):
 # Read global input
 global_data = read_global_data()
 
-my_ship = Ship()
-enemy_ship = Ship()
+my_ship = Ship(is_my_ship=True)
+enemy_ship = Ship(is_my_ship=False)
 board = Board(
     height=global_data["height"],
     width=global_data["width"],
@@ -278,7 +328,7 @@ while True:
     my_ship_cell = board.get_cell(my_ship.x, my_ship.y)
     my_ship_cell.visit()
     enemy_orders = turn_data['enemy_orders']
-    enemy_ship.update_enemy_action(enemy_orders)
+    enemy_ship.do_actions(enemy_orders)
     enemy_ship.update_possible_cells(board)
 
     best_action = my_ship.best_action(board)
