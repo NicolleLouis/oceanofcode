@@ -11,6 +11,31 @@ class Position(object):
         self.x = x
         self.y = y
 
+    def get_sector(self):
+        first_tier = range(0, 5, 1)
+        second_tier = range(5, 10, 1)
+        if self.y in first_tier:
+            if self.x in first_tier:
+                return 1
+            elif self.x in second_tier:
+                return 2
+            else:
+                return 3
+        elif self.y in second_tier:
+            if self.x in first_tier:
+                return 4
+            elif self.x in second_tier:
+                return 5
+            else:
+                return 6
+        else:
+            if self.x in first_tier:
+                return 7
+            elif self.x in second_tier:
+                return 8
+            else:
+                return 9
+
     def invert_position(self):
         return Position(
             x=self.x * -1,
@@ -82,6 +107,7 @@ class Cell(object):
         self.is_visited = False
         self.can_be_enemy_start = not is_island
         self.can_be_enemy_position = not is_island
+        self.sector = self.position.get_sector()
 
     def has_been_visited(self):
         self.is_visited = True

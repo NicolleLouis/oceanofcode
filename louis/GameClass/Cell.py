@@ -1,3 +1,6 @@
+from Service import ServiceUtils
+
+
 class Cell(object):
     def __init__(self, position, is_island):
         self.position = position
@@ -5,6 +8,7 @@ class Cell(object):
         self.is_visited = False
         self.can_be_enemy_start = not is_island
         self.can_be_enemy_position = not is_island
+        self.sector = self.position.get_sector()
 
     def has_been_visited(self):
         self.is_visited = True
