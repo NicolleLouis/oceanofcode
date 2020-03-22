@@ -49,12 +49,12 @@ class Ship(object):
         self.life = 6
 
     def update_with_turn_data(self, context_data):
+        self.position = Position(
+            x=context_data.current_turn_x,
+            y=context_data.current_turn_y
+        )
         self.torpedo_cooldown = context_data.current_turn_torpedo_cooldown
         self.life = context_data.current_turn_my_life
-
-    def move(self, direction):
-        self.direction = direction
-        self.position = self.position.add_direction(direction)
 
     def get_position_after_move(self, direction):
         return self.position.add_direction(direction)
@@ -287,7 +287,7 @@ class ContextData(object):
         # computed field
         self.enemy_was_damaged = None
 
-    def update_turn_data(self, turn_data, enemy_ship):
+    def update_turn_data(self, turn_data, enemy_ship, board):
         self.current_turn_x = turn_data["x"]
         self.current_turn_y = turn_data["y"]
         self.current_turn_my_life = turn_data["my_life"]
@@ -298,6 +298,12 @@ class ContextData(object):
         self.current_turn_sonar_result = turn_data["sonar_result"]
         self.current_turn_opponent_orders = turn_data["opponent_orders"]
 
+        board.get_cell(
+            Position(
+                x=turn_data["x"],
+                y=turn_data["y"]
+            )
+        ).is_visited = True
         self.analyse_turn_data(enemy_ship)
 
     def update_end_of_turn_data(self, orders):
@@ -356,15 +362,9 @@ class ContextData(object):
 
     @staticmethod
     def analyse_opponent_silence_order(enemy_ship):
-        initial_potential_position = enemy_ship.enemy_board.compute_number_of_potential_positions()
-
         enemy_ship.reset_delta_position()
         enemy_ship.enemy_board.update_possible_position_after_silence()
         enemy_ship.enemy_board.update_enemy_current_position(enemy_ship.delta_position)
-
-        final_potential_position = enemy_ship.enemy_board.compute_number_of_potential_positions()
-        ServiceUtils.print_log("From: {} To: {}".format(initial_potential_position, final_potential_position))
-        enemy_ship.enemy_board.print_potential_position_board()
 
     @staticmethod
     def update_current_position(enemy_ship):
@@ -450,7 +450,7 @@ class ServiceMovement:
     @staticmethod
     def move_my_ship(ship, direction, board):
         board.get_cell(position=ship.position).has_been_visited()
-        ship.move(direction)
+        ship.direction = direction
         move_order = ServiceOrder.create_move_order(direction)
         return move_order
 
@@ -458,14 +458,16 @@ class ServiceMovement:
     def random_direction():
         return random.choice(directions)
 
+    @staticmethod
+    def should_surface(ship, board):
+        return board.is_position_dead_end(ship.position)
+
     @classmethod
-    def chose_movement_and_move(cls, ship, board):
-        if board.is_position_dead_end(ship.position):
-            return False
+    def chose_movement(cls, ship, board):
         direction = cls.random_direction()
         while not cls.is_move_possible_in_direction(ship, direction, board):
             direction = cls.random_direction()
-        move_order = cls.move_my_ship(ship, direction, board)
+        move_order = ServiceOrder.create_move_order(direction)
         return move_order
 
     @staticmethod
@@ -625,24 +627,25 @@ context_data = ContextData()
 while True:
     # read turn data and analysis
     turn_data = ServiceUtils.read_turn_data()
-    context_data.update_turn_data(turn_data, enemy_ship)
+    context_data.update_turn_data(turn_data, enemy_ship, board)
     my_ship.update_with_turn_data(context_data)
     enemy_ship.update_with_turn_data(context_data)
 
     # Read and analyse opponent order
     context_data.read_opponent_order(enemy_ship)
 
-    move_order = ServiceMovement.chose_movement_and_move(my_ship, board)
-    attack_order = ServiceTorpedo.chose_torpedo(my_ship, enemy_ship)
-    message_order = ServiceOrder.create_number_of_possible_position_order(enemy_ship)
-    if not move_order:
-        move_and_recharge_order = ServiceMovement.surface(board)
-    else:
+    should_surface = ServiceMovement.should_surface(my_ship, board)
+    if not should_surface:
+        move_order = ServiceMovement.chose_movement(my_ship, board)
         recharge_order = ServiceRecharge.chose_recharge(context_data)
         move_and_recharge_order = ServiceOrder.concatenate_move_and_recharge_order(
             move_order=move_order,
             recharge_order=recharge_order
         )
+    else:
+        move_and_recharge_order = ServiceMovement.surface(board)
+    attack_order = ServiceTorpedo.chose_torpedo(my_ship, enemy_ship)
+    message_order = ServiceOrder.create_number_of_possible_position_order(enemy_ship)
     orders = ServiceOrder.concatenate_order([move_and_recharge_order, attack_order, message_order])
     ServiceOrder.display_order(orders)
 

@@ -13,7 +13,7 @@ class ServiceMovement:
     @staticmethod
     def move_my_ship(ship, direction, board):
         board.get_cell(position=ship.position).has_been_visited()
-        ship.move(direction)
+        ship.direction = direction
         move_order = ServiceOrder.create_move_order(direction)
         return move_order
 
@@ -21,14 +21,16 @@ class ServiceMovement:
     def random_direction():
         return random.choice(directions)
 
+    @staticmethod
+    def should_surface(ship, board):
+        return board.is_position_dead_end(ship.position)
+
     @classmethod
-    def chose_movement_and_move(cls, ship, board):
-        if board.is_position_dead_end(ship.position):
-            return False
+    def chose_movement(cls, ship, board):
         direction = cls.random_direction()
         while not cls.is_move_possible_in_direction(ship, direction, board):
             direction = cls.random_direction()
-        move_order = cls.move_my_ship(ship, direction, board)
+        move_order = ServiceOrder.create_move_order(direction)
         return move_order
 
     @staticmethod

@@ -1,3 +1,4 @@
+from GameClass import Position
 from Service import ServiceUtils
 from louis.Service import ServiceOrder
 
@@ -32,7 +33,7 @@ class ContextData(object):
         # computed field
         self.enemy_was_damaged = None
 
-    def update_turn_data(self, turn_data, enemy_ship):
+    def update_turn_data(self, turn_data, enemy_ship, board):
         self.current_turn_x = turn_data["x"]
         self.current_turn_y = turn_data["y"]
         self.current_turn_my_life = turn_data["my_life"]
@@ -43,6 +44,12 @@ class ContextData(object):
         self.current_turn_sonar_result = turn_data["sonar_result"]
         self.current_turn_opponent_orders = turn_data["opponent_orders"]
 
+        board.get_cell(
+            Position(
+                x=turn_data["x"],
+                y=turn_data["y"]
+            )
+        ).is_visited = True
         self.analyse_turn_data(enemy_ship)
 
     def update_end_of_turn_data(self, orders):
@@ -101,15 +108,9 @@ class ContextData(object):
 
     @staticmethod
     def analyse_opponent_silence_order(enemy_ship):
-        initial_potential_position = enemy_ship.enemy_board.compute_number_of_potential_positions()
-
         enemy_ship.reset_delta_position()
         enemy_ship.enemy_board.update_possible_position_after_silence()
         enemy_ship.enemy_board.update_enemy_current_position(enemy_ship.delta_position)
-
-        final_potential_position = enemy_ship.enemy_board.compute_number_of_potential_positions()
-        ServiceUtils.print_log("From: {} To: {}".format(initial_potential_position, final_potential_position))
-        enemy_ship.enemy_board.print_potential_position_board()
 
     @staticmethod
     def update_current_position(enemy_ship):

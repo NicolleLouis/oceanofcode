@@ -10,9 +10,6 @@
     - Ma torpille l'a touché à 2 donc il est pile la
     - Il fait surface donc je sais ou il est
 
-- Recharge:
-    - Ne pas charger une arme a cooldown 0
-
 - Silence:
     - Use silence
 

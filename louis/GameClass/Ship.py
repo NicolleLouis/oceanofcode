@@ -11,12 +11,12 @@ class Ship(object):
         self.life = 6
 
     def update_with_turn_data(self, context_data):
+        self.position = Position(
+            x=context_data.current_turn_x,
+            y=context_data.current_turn_y
+        )
         self.torpedo_cooldown = context_data.current_turn_torpedo_cooldown
         self.life = context_data.current_turn_my_life
-
-    def move(self, direction):
-        self.direction = direction
-        self.position = self.position.add_direction(direction)
 
     def get_position_after_move(self, direction):
         return self.position.add_direction(direction)
