@@ -15,13 +15,6 @@ class ServiceMovement:
         return board.is_position_valid_for_move(next_position)
 
     @staticmethod
-    def move_my_ship(ship, direction, board):
-        board.get_cell(position=ship.position).has_been_visited()
-        ship.direction = direction
-        move_order = ServiceOrder.create_direction_order(direction)
-        return move_order
-
-    @staticmethod
     def random_direction():
         return random.choice(DIRECTIONS)
 

@@ -365,6 +365,7 @@ class ContextData(object):
                 y=turn_data["y"]
             )
         ).is_visited = True
+
         self.analyse_turn_data(enemy_ship)
 
     def update_end_of_turn_data(self, orders):
@@ -393,21 +394,29 @@ class ContextData(object):
             self.enemy_was_damaged = None
 
     def analyse_enemy_damage(self, enemy_ship):
-        # TODO: Case damage taken -> guess if it's for own torpedo or not
         if self.enemy_was_damaged:
+            enemy_has_surface = bool(ServiceOrder.get_surface_order(self.current_turn_opponent_orders))
+            enemy_has_torpedo = bool(ServiceOrder.get_attack_order(self.current_turn_opponent_orders))
+            enemy_has_trigger = bool(ServiceOrder.get_trigger_order(self.current_turn_opponent_orders))
+            own_ship_has_shooted = bool(ServiceOrder.get_attack_order(self.last_turn_own_orders))
+            if own_ship_has_shooted:
+                if not (enemy_has_surface or enemy_has_torpedo or enemy_has_trigger):
+                    ServiceUtils.print_log("J'ai touché la non?")
             return
         # Case first turn
-        if self.last_turn_own_orders is None:
+        elif self.last_turn_own_orders is None:
             return
-            # case damage taken but not because of our own torpedo (Surface or enemy torpedo)
-        if not ServiceOrder.get_attack_order(self.last_turn_own_orders):
+        # Case damage taken but not because of our own torpedo (Surface or enemy torpedo)
+        elif not ServiceOrder.get_attack_order(self.last_turn_own_orders):
             return
-        attack_order = ServiceOrder.get_attack_order(self.last_turn_own_orders)
-        position_torpedo = ServiceOrder.get_position_from_attack_order(attack_order)
-        enemy_ship.enemy_board.update_board_torpedo_did_not_hit_in_position(
-            position_torpedo,
-            enemy_ship.delta_position
-        )
+        # Case I shot a torpedo but did not hit
+        else:
+            attack_order = ServiceOrder.get_attack_order(self.last_turn_own_orders)
+            position_torpedo = ServiceOrder.get_position_from_attack_order(attack_order)
+            enemy_ship.enemy_board.update_board_torpedo_did_not_hit_in_position(
+                position_torpedo,
+                enemy_ship.delta_position
+            )
 
     def compute_custom_fields(self):
         self.compute_enemy_was_damaged()
@@ -428,8 +437,6 @@ class ContextData(object):
 
     @staticmethod
     def analyse_opponent_attack_order(enemy_ship, attack_order):
-        initial_count = enemy_ship.enemy_board.compute_number_of_potential_positions()
-
         attack_position = ServiceOrder.extract_position_from_attack_order(attack_order)
         enemy_ship.enemy_board.enemy_is_in_range(
             range_attack=4,
@@ -437,8 +444,6 @@ class ContextData(object):
         )
         enemy_ship.enemy_board.update_enemy_potential_start_position(enemy_ship.delta_position)
 
-        final_count = enemy_ship.enemy_board.compute_number_of_potential_positions()
-        ServiceUtils.print_log("From: {} to: {}".format(initial_count, final_count))
 
     @staticmethod
     def analyse_opponent_surface_order(enemy_ship, surface_order):
@@ -458,16 +463,16 @@ class ContextData(object):
         list_orders = ServiceOrder.split_orders(self.current_turn_opponent_orders)
         for order in list_orders:
             silence_order = ServiceOrder.get_silence_order(order)
-            if silence_order:
+            if bool(silence_order):
                 self.analyse_opponent_silence_order(enemy_ship)
             move_order = ServiceOrder.get_move_order(order)
-            if move_order:
+            if bool(move_order):
                 self.analyse_opponent_move_order(enemy_ship, move_order)
             surface_order = ServiceOrder.get_surface_order(order)
-            if surface_order:
+            if bool(surface_order):
                 self.analyse_opponent_surface_order(enemy_ship, surface_order)
             attack_order = ServiceOrder.get_attack_order(order)
-            if attack_order:
+            if bool(attack_order):
                 self.analyse_opponent_attack_order(enemy_ship, attack_order)
 
 
@@ -539,13 +544,6 @@ class ServiceMovement:
         return board.is_position_valid_for_move(next_position)
 
     @staticmethod
-    def move_my_ship(ship, direction, board):
-        board.get_cell(position=ship.position).has_been_visited()
-        ship.direction = direction
-        move_order = ServiceOrder.create_direction_order(direction)
-        return move_order
-
-    @staticmethod
     def random_direction():
         return random.choice(DIRECTIONS)
 
@@ -568,6 +566,12 @@ class ServiceMovement:
 
 class ServiceOrder:
     @staticmethod
+    def display_own_position(ship):
+        return ServiceOrder.create_msg_order(
+            str(ship.position)
+        )
+
+    @staticmethod
     def extract_position_from_attack_order(attack_order):
         string_position = attack_order.replace("TORPEDO ", "")
         list_coordinates = string_position.split(" ")
@@ -582,6 +586,14 @@ class ServiceOrder:
     @staticmethod
     def split_orders(orders):
         return orders.split("|")
+
+    @staticmethod
+    def get_trigger_order(orders):
+        list_orders = ServiceOrder.split_orders(orders)
+        for order in list_orders:
+            if order.find("TRIGGER") > -1 == -1:
+                return order
+        return False
 
     @staticmethod
     def get_attack_order(orders):

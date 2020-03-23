@@ -3,9 +3,9 @@
     - Peut pas traverser son chemin
 
 - Détection:
-    - Il tire donc il est a moins de 4 cases (C'est vrai?)
     - Ma torpille l'a touché donc il est pas ailleurs
     - Ma torpille l'a touché à 2 donc il est pile la
+    - Il a fait surface + je l'ai touché (Cas très particulier)
 
 - Déplacement:
     - 1 option viser une position

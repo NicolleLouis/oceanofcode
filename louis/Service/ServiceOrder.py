@@ -4,6 +4,12 @@ from louis.GameClass import Position
 
 class ServiceOrder:
     @staticmethod
+    def display_own_position(ship):
+        return ServiceOrder.create_msg_order(
+            str(ship.position)
+        )
+
+    @staticmethod
     def extract_position_from_attack_order(attack_order):
         string_position = attack_order.replace("TORPEDO ", "")
         list_coordinates = string_position.split(" ")
@@ -18,6 +24,14 @@ class ServiceOrder:
     @staticmethod
     def split_orders(orders):
         return orders.split("|")
+
+    @staticmethod
+    def get_trigger_order(orders):
+        list_orders = ServiceOrder.split_orders(orders)
+        for order in list_orders:
+            if order.find("TRIGGER") > -1 == -1:
+                return order
+        return False
 
     @staticmethod
     def get_attack_order(orders):
