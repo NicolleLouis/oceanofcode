@@ -70,11 +70,11 @@ class Board(object):
                     if not self.get_cell(current_position).can_be_enemy_position:
                         self.get_cell(start_position).cannot_be_enemy_start()
 
-    def enemy_is_in_range(self, range_attack, attack_position):
+    def enemy_is_in_range(self, range_detection, attack_position):
         for x in range(self.width):
             for y in range(self.height):
                 cell = self.get_cell(Position(x, y))
-                if cell.position.get_distance(attack_position) > range_attack:
+                if cell.position.get_distance(attack_position) > range_detection:
                     cell.can_be_enemy_position = False
 
     def compute_number_of_potential_positions(self):

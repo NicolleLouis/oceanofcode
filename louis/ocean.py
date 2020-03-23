@@ -202,11 +202,11 @@ class Board(object):
                     if not self.get_cell(current_position).can_be_enemy_position:
                         self.get_cell(start_position).cannot_be_enemy_start()
 
-    def enemy_is_in_range(self, range_attack, attack_position):
+    def enemy_is_in_range(self, range_detection, attack_position):
         for x in range(self.width):
             for y in range(self.height):
                 cell = self.get_cell(Position(x, y))
-                if cell.position.get_distance(attack_position) > range_attack:
+                if cell.position.get_distance(attack_position) > range_detection:
                     cell.can_be_enemy_position = False
 
     def compute_number_of_potential_positions(self):
@@ -295,6 +295,7 @@ class Board(object):
 class EnemyShip(object):
     def __init__(self, height, width, lines):
         self.delta_position = Position(0, 0)
+        self.last_turn_delta_position = Position(0, 0)
         self.life = 6
         self.enemy_board = Board(
             height=height,
@@ -302,6 +303,21 @@ class EnemyShip(object):
             lines=lines
         )
         self.number_of_possible_positions = height*width
+
+    def enemy_was_in_range(self, range_detection, detection_position):
+        enemy_board = self.enemy_board
+        for x in range(enemy_board.width):
+            for y in range(enemy_board.height):
+                starting_cell = enemy_board.get_cell(Position(x, y))
+                last_turn_position_from_starting_position = Position(x, y).add_position(self.last_turn_delta_position)
+                last_turn_position = enemy_board.get_cell(last_turn_position_from_starting_position)
+                # Case last_turn_position not on board
+                if not bool(last_turn_position):
+                    starting_cell.cannot_be_enemy_start()
+                # Case last_turn_position_hors de_range
+                elif last_turn_position.position.get_distance(detection_position) > range_detection:
+                    starting_cell.cannot_be_enemy_start()
+        enemy_board.update_enemy_current_position(self.delta_position)
 
     def reset_delta_position(self):
         self.delta_position = Position(0, 0)
@@ -368,7 +384,7 @@ class ContextData(object):
 
         self.analyse_turn_data(enemy_ship)
 
-    def update_end_of_turn_data(self, orders):
+    def update_end_of_turn_data(self, orders, enemy_ship):
         self.last_turn_turn_x = self.current_turn_x
         self.last_turn_turn_y = self.current_turn_y
         self.last_turn_turn_my_life = self.current_turn_my_life
@@ -380,6 +396,7 @@ class ContextData(object):
         self.last_turn_turn_opponent_orders = self.current_turn_opponent_orders
 
         self.last_turn_own_orders = orders
+        enemy_ship.last_turn_delta_position = enemy_ship.delta_position
 
     def analyse_turn_data(self, enemy_ship):
         self.compute_custom_fields()
@@ -393,6 +410,18 @@ class ContextData(object):
         else:
             self.enemy_was_damaged = None
 
+    def enemy_was_hit_last_turn(self, enemy_ship):
+        initial_count = enemy_ship.enemy_board.compute_number_of_potential_positions()
+
+        last_turn_attack_order = ServiceOrder.get_attack_order(self.last_turn_own_orders)
+        last_turn_attack_position = ServiceOrder.extract_position_from_attack_order(last_turn_attack_order)
+        enemy_ship.enemy_was_in_range(
+            range_detection=1,
+            detection_position=last_turn_attack_position
+        )
+        final_count = enemy_ship.enemy_board.compute_number_of_potential_positions()
+        ServiceUtils.print_log("From: {} to: {}".format(initial_count, final_count))
+
     def analyse_enemy_damage(self, enemy_ship):
         if self.enemy_was_damaged:
             enemy_has_surface = bool(ServiceOrder.get_surface_order(self.current_turn_opponent_orders))
@@ -401,7 +430,7 @@ class ContextData(object):
             own_ship_has_shooted = bool(ServiceOrder.get_attack_order(self.last_turn_own_orders))
             if own_ship_has_shooted:
                 if not (enemy_has_surface or enemy_has_torpedo or enemy_has_trigger):
-                    ServiceUtils.print_log("J'ai touché la non?")
+                    self.enemy_was_hit_last_turn(enemy_ship)
             return
         # Case first turn
         elif self.last_turn_own_orders is None:
@@ -439,7 +468,7 @@ class ContextData(object):
     def analyse_opponent_attack_order(enemy_ship, attack_order):
         attack_position = ServiceOrder.extract_position_from_attack_order(attack_order)
         enemy_ship.enemy_board.enemy_is_in_range(
-            range_attack=4,
+            range_detection=4,
             attack_position=attack_position
         )
         enemy_ship.enemy_board.update_enemy_potential_start_position(enemy_ship.delta_position)
@@ -772,4 +801,4 @@ while True:
     orders = ServiceOrder.concatenate_order([attack_order, move_and_recharge_order, message_order])
     ServiceOrder.display_order(orders)
 
-    context_data.update_end_of_turn_data(orders)
+    context_data.update_end_of_turn_data(orders, enemy_ship)

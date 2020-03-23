@@ -36,4 +36,4 @@ while True:
     orders = ServiceOrder.concatenate_order([attack_order, move_and_recharge_order, message_order])
     ServiceOrder.display_order(orders)
 
-    context_data.update_end_of_turn_data(orders)
+    context_data.update_end_of_turn_data(orders, enemy_ship)
