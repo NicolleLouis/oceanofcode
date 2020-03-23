@@ -137,13 +137,23 @@ class Ship(object):
             if "TORPEDO" in action and not "MOVE" in action:
                 tor, x, y = action.split()
                 cell_shot_at = self.board.get_cell(int(x), int(y))
+                print_log(len(self.possible_cells))
+                #if we do not copy it it will screw it up as we work on the iterable
+                possible_cells_to_remove = []
+                possible_start_cell_to_remove = []
                 for cell in self.possible_cells:
                     distance_to_cell = self.board.get_distance(cell, cell_shot_at)
+                    print_log(cell)
                     # he can only fire at distance 4 maximum
                     if distance_to_cell > 4:
+                        print_log("cell to remove: " + str(cell.x) + " " + str(cell.y) + " distance: " + str(distance_to_cell))
                         corresponding_start_cell = board.get_cell_from_vector(cell, -self.dx, -self.dy)
-                        self.possible_start_cells.remove(corresponding_start_cell)
-                        self.possible_cells.remove(cell)
+                        possible_start_cell_to_remove.append(corresponding_start_cell)
+                        possible_cells_to_remove.append(cell)
+                for cell in possible_cells_to_remove:
+                    self.possible_cells.remove(cell)
+                for cell in possible_start_cell_to_remove:
+                    self.possible_start_cells.remove(cell)
 
             # if we are sure of his position, let's use it
             if len(self.possible_cells) == 1:
@@ -231,7 +241,7 @@ class Cell(object):
         return not (self.is_island or self.is_visited)
 
     def __str__(self):
-        return "x" if self.is_island else "."
+        return str(self.x) + " " + str(self.y)
 
 
 class Board(object):
@@ -306,7 +316,7 @@ class Board(object):
 
     # to do: add pathing algo, to compute real distance.
     def get_distance(self, cell1, cell2):
-        return math.fabs(cell1.x - cell2.x) + math.fabs(cell1.y - cell2.y)
+        return abs(cell1.x - cell2.x) + abs(cell1.y - cell2.y)
 
     def print_board(self):
         for line in self.map:
