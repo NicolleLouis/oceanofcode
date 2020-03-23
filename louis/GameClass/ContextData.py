@@ -105,6 +105,7 @@ class ContextData(object):
         enemy_ship.delta_position = enemy_ship.delta_position.add_direction(
             ServiceOrder.get_direction_from_order(move_order)
         )
+        enemy_ship.update_potential_position_from_geography()
 
     @staticmethod
     def extract_sector_from_opponent_surface_order(surface_order):
@@ -136,25 +137,21 @@ class ContextData(object):
         enemy_ship.enemy_board.update_possible_position_after_silence()
         enemy_ship.enemy_board.update_enemy_current_position(enemy_ship.delta_position)
 
-    @staticmethod
-    def update_current_position(enemy_ship):
-        enemy_ship.enemy_board.update_enemy_potential_start_position_from_geography(enemy_ship.delta_position)
-        enemy_ship.enemy_board.update_enemy_current_position(enemy_ship.delta_position)
-        enemy_ship.update_number_of_possible_positions()
-
     def read_opponent_order(self, enemy_ship):
         if self.current_turn_opponent_orders == "NA":
             return
-        silence_order = ServiceOrder.get_silence_order(self.current_turn_opponent_orders)
-        if silence_order:
-            self.analyse_opponent_silence_order(enemy_ship)
-        move_order = ServiceOrder.get_move_order(self.current_turn_opponent_orders)
-        if move_order:
-            self.analyse_opponent_move_order(enemy_ship, move_order)
-        surface_order = ServiceOrder.get_surface_order(self.current_turn_opponent_orders)
-        if surface_order:
-            self.analyse_opponent_surface_order(enemy_ship, surface_order)
-        attack_order = ServiceOrder.get_attack_order(self.current_turn_opponent_orders)
-        if attack_order:
-            self.analyse_opponent_attack_order(enemy_ship, attack_order)
-        self.update_current_position(enemy_ship)
+        list_orders = ServiceOrder.split_orders(self.current_turn_opponent_orders)
+        for order in list_orders:
+            silence_order = ServiceOrder.get_silence_order(order)
+            if silence_order:
+                self.analyse_opponent_silence_order(enemy_ship)
+            move_order = ServiceOrder.get_move_order(order)
+            if move_order:
+                self.analyse_opponent_move_order(enemy_ship, move_order)
+            surface_order = ServiceOrder.get_surface_order(order)
+            if surface_order:
+                self.analyse_opponent_surface_order(enemy_ship, surface_order)
+            attack_order = ServiceOrder.get_attack_order(order)
+            if attack_order:
+                self.analyse_opponent_attack_order(enemy_ship, attack_order)
+

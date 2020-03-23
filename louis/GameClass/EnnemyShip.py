@@ -21,3 +21,8 @@ class EnemyShip(object):
 
     def update_number_of_possible_positions(self):
         self.number_of_possible_positions = self.enemy_board.compute_number_of_potential_positions()
+
+    def update_potential_position_from_geography(self):
+        self.enemy_board.update_enemy_potential_start_position_from_geography(self.delta_position)
+        self.enemy_board.update_enemy_current_position(self.delta_position)
+        self.update_number_of_possible_positions()

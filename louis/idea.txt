@@ -11,6 +11,3 @@
     - 1 option viser une position
     - Quand je sais ou il est me diriger vers la
     - Me diriger vers le barycentre la ou il peut etre?
-
-- BugFix:
-    - Lire les ordres dans l'ordre
