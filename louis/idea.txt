@@ -6,9 +6,12 @@
     - Il tire donc il est a moins de 4 cases (C'est vrai?)
     - Ma torpille l'a touché donc il est pas ailleurs
     - Ma torpille l'a touché à 2 donc il est pile la
-    - Il fait surface donc je sais ou il est
 
 - Déplacement:
     - 1 option viser une position
     - Quand je sais ou il est me diriger vers la
     - Me diriger vers le barycentre la ou il peut etre?
+
+- BugFix:
+    - Lire les ordres dans l'ordre
+

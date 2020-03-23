@@ -4,6 +4,12 @@ from louis.GameClass import Position
 
 class ServiceOrder:
     @staticmethod
+    def extract_position_from_attack_order(attack_order):
+        string_position = attack_order.replace("TORPEDO ", "")
+        list_coordinates = string_position.split(" ")
+        return Position(list_coordinates[0], list_coordinates[1])
+
+    @staticmethod
     def concatenate_move_and_recharge_order(move_order, recharge_order):
         if move_order.find("SILENCE") > -1:
             return move_order

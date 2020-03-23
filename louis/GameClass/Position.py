@@ -3,8 +3,8 @@ from louis.Service import ServiceUtils
 
 class Position(object):
     def __init__(self, x, y):
-        self.x = x
-        self.y = y
+        self.x = int(x)
+        self.y = int(y)
 
     def get_sector(self):
         first_tier = range(0, 5, 1)
