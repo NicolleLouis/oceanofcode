@@ -199,13 +199,11 @@ class Board(object):
                         self.get_cell(start_position).cannot_be_enemy_start()
 
     def enemy_is_in_range(self, range_attack, attack_position):
-        self.print_potential_position_board()
         for x in range(self.width):
             for y in range(self.height):
                 cell = self.get_cell(Position(x, y))
                 if cell.position.get_distance(attack_position) > range_attack:
                     cell.can_be_enemy_position = False
-        self.print_potential_position_board()
 
     def compute_number_of_potential_positions(self):
         number_of_positions = 0
