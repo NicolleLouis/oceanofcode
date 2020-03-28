@@ -16,88 +16,151 @@ class Ship(object):
         self.torpedo_cooldown = -1
         self.known_path = []
         self.is_my_ship = is_my_ship
+        self.board = []
 
-    def get_possible_silence(self, board):
+    def get_possible_silences(self, board):
         # blockers will define maximum reach of the silence. By definition <= 4
         # TODO: check if we don't have issues in order of interpretation with MOVE + SILENCE
-        blocker_north = 4
-        blocker_east = 4
-        blocker_south = 4
-        blocker_west = 4
-        previous_position = [0, 0]
-        for vector in known_path:
-            previous_position = [coord for coord in zip(previous_position, vector)]
-            previous_x = previous_position[0]
-            previous_y = previous_position[1]
-            if x == 0:
-                if y > 0:
-                    blocker_south = math.min(blocker_south, y)
+        blocker_north = 5
+        blocker_east = 5
+        blocker_south = 5
+        blocker_west = 5
+        previous_relative_position = [0, 0]
+        for vector in self.known_path:
+            previous_relative_position[0] -= vector[0]
+            previous_relative_position[1] -= vector[1]
+            previous_x = previous_relative_position[0]
+            previous_y = previous_relative_position[1]
+            if previous_x == 0:
+                if previous_y > 0:
+                    blocker_south = min(blocker_south, previous_y)
                 else:
-                    blocker_north = math.min(blocker_north, -y)
-            if y == 0:
-                if x > 0:
-                    blocker_east = math.min(blocker_east, x)
+                    blocker_north = min(blocker_north, -previous_y)
+            if previous_y == 0:
+                if previous_x > 0:
+                    blocker_east = min(blocker_east, previous_x)
                 else:
-                    blocker_west = math.min(blocker_west, -x)
+                    blocker_west = min(blocker_west, -previous_x)
 
-        for dx in range(-4,5):
-            if board.get_cell(self.x + dx, self.y).is_island:
-                if dx > 0:
-                    blocker_east = math.min(blocker_east, dx)
-                else:
-                    blocker_west = math.min(blocker_west, -dx)
+        # if we are sure of his position, let's use it
+        if(len(self.possible_cells) == 1):
+            for dx in range(-4,5):
+                if board.get_cell(self.x + dx, self.y).is_island:
+                    if dx > 0:
+                        blocker_east = min(blocker_east, dx)
+                    else:
+                        blocker_west = min(blocker_west, -dx)
 
-        for dy in range(-4,5):
-            if board.get_cell(self.x, self.y + dy).is_island:
-                if dy > 0:
-                    blocker_south = math.min(blocker_south, dy)
-                else:
-                    blocker_north = math.min(blocker_north, -dy)
+            for dy in range(-4,5):
+                if board.get_cell(self.x, self.y + dy).is_island:
+                    if dy > 0:
+                        blocker_south = min(blocker_south, dy)
+                    else:
+                        blocker_north = min(blocker_north, -dy)
+
+        print_log("blocker north:" + str(blocker_north))
+        print_log("blocker south:" + str(blocker_south))
+        print_log("blocker east:" + str(blocker_east))
+        print_log("blocker west:" + str(blocker_west))
 
         possible_silences = []
         for x in range(blocker_east):
-            possible_silences.append([0, x])
+            possible_silences.append([x, 0])
         for x in range(blocker_west):
-            possible_silences.append([0, -x])
+            possible_silences.append([-x, 0])
         for y in range(blocker_south):
             possible_silences.append([0, y])
-        for x in range(blocker_north):
+        for y in range(blocker_north):
             possible_silences.append([0, -y])
 
         return possible_silences
 
+    def get_vector_translated_cells(self, cells_array, vector, board):
+        translated_cells_array = []
+        for cell in cells_array:
+            translated_cell = board.get_cell(cell.x + vector[0], cell.y + vector[1])
+            if board.is_position_in_grid(translated_cell.x, translated_cell.y)\
+                and not board.is_position_island(translated_cell.x, translated_cell.y):
+                    translated_cells_array.append(translated_cell)
+        return translated_cells_array
 
-    def do_actions(self, action):
-        if "MOVE N" in action:
-            self.y -= 1
-            self.dy -= 1
-            self.known_path = [0,-1] + self.known_path
+    def update_possible_cells_after_silence(self, board):
+        possible_start_cells = []
+        possible_cells = []
+        for vector in self.get_possible_silences(board):
+            possible_cells += self.get_vector_translated_cells(self.possible_cells, vector, board)
+        # remove duplicates
+        self.possible_start_cells = list(dict.fromkeys(possible_cells))
+        self.possible_cells = list(dict.fromkeys(possible_cells))
+        for cell in self.possible_cells:
+            print_log("possible enemy position after silence: " + str(cell.x) + " " + str(cell.y))
 
-        if "MOVE E" in action:
-            self.x += 1
-            self.dx += 1
-            self.known_path = [1,0] + self.known_path
+    def do_actions(self, actions):
+        for action in actions.split('|'):
+            if "MOVE" in action:
+                if "MOVE N" in action:
+                    self.y -= 1
+                    self.dy -= 1
+                    self.known_path.insert(0, [0,-1])
 
-        if "MOVE S" in action:
-            self.y += 1
-            self.dy += 1
-            self.known_path = [0,1] + self.known_path
+                if "MOVE E" in action:
+                    self.x += 1
+                    self.dx += 1
+                    self.known_path.insert(0, [1,0])
 
-        if "MOVE W" in action:
-            self.x -= 1
-            self.dx -= 1
-            self.known_path = [-1,0] + self.known_path
+                if "MOVE S" in action:
+                    self.y += 1
+                    self.dy += 1
+                    self.known_path.insert(0, [0,1])
 
-        if "SURFACE" in action:
-            # filter out
-            self.known_path = []
-            if self.is_my_ship:
-                board.clear_visits()
+                if "MOVE W" in action:
+                    self.x -= 1
+                    self.dx -= 1
+                    self.known_path.insert(0, [-1,0])
 
-        if "SILENCE" in action:
-            pass
+                self.update_possible_cells_after_move(self.board)
 
-        return action
+            if "SURFACE" in action:
+                self.known_path = []
+                if self.is_my_ship:
+                    board.clear_visits()
+
+            if "SILENCE" in action and not "MOVE" in action:
+                assert len(board.map) > 0
+                print_log("POSSIBLE CELLS: " + str(len(self.possible_cells)))
+                self.update_possible_cells_after_silence(self.board)
+                print_log("SILENCE DETECTED, POSSIBLE CELLS: " + str(len(self.possible_cells)))
+                self.dx = 0
+                self.dy = 0
+                self.known_path = []
+
+            if "TORPEDO" in action and not "MOVE" in action:
+                tor, x, y = action.split()
+                cell_shot_at = self.board.get_cell(int(x), int(y))
+                print_log(len(self.possible_cells))
+                #if we do not copy it it will screw it up as we work on the iterable
+                possible_cells_to_remove = []
+                possible_start_cell_to_remove = []
+                for cell in self.possible_cells:
+                    distance_to_cell = self.board.get_distance(cell, cell_shot_at)
+                    print_log(cell)
+                    # he can only fire at distance 4 maximum
+                    if distance_to_cell > 4:
+                        print_log("cell to remove: " + str(cell.x) + " " + str(cell.y) + " distance: " + str(distance_to_cell))
+                        corresponding_start_cell = board.get_cell_from_vector(cell, -self.dx, -self.dy)
+                        possible_start_cell_to_remove.append(corresponding_start_cell)
+                        possible_cells_to_remove.append(cell)
+                for cell in possible_cells_to_remove:
+                    self.possible_cells.remove(cell)
+                for cell in possible_start_cell_to_remove:
+                    self.possible_start_cells.remove(cell)
+
+            # if we are sure of his position, let's use it
+            if len(self.possible_cells) == 1:
+                self.x = self.possible_cells[0].x
+                self.y = self.possible_cells[0].y
+
+        return actions
 
     def possible_moves(self, board):
         possible_moves = []
@@ -144,7 +207,7 @@ class Ship(object):
                     except:
                         pass
 
-    def update_possible_cells(self, board):
+    def update_possible_cells_after_move(self, board):
         dx = self.dx
         dy = self.dy
         self.update_possible_start_cells(board)
@@ -152,8 +215,12 @@ class Ship(object):
         for cell_line in board.map:
             for cell in cell_line:
                 if cell in self.possible_start_cells:
+                    #print_log("start :" + str(cell.x) + " " + str(cell.y))
                     possible_cells.append(board.get_cell_from_vector(cell, dx, dy))
         self.possible_cells = possible_cells
+        if not self.is_my_ship:
+            for cell in self.possible_cells:
+                print_log("possible enemy position: " + str(cell.x) + " " + str(cell.y))
 
 
     def __str__(self):
@@ -174,7 +241,7 @@ class Cell(object):
         return not (self.is_island or self.is_visited)
 
     def __str__(self):
-        return "x" if self.is_island else "."
+        return str(self.x) + " " + str(self.y)
 
 
 class Board(object):
@@ -215,7 +282,7 @@ class Board(object):
         return self.get_cell(x, y).is_cell_valid()
 
     def is_position_island(self, x, y):
-        return self.get_cell(x, y).is_island()
+        return self.get_cell(x, y).is_island
 
     def get_cell_in_direction(self, x, y, direction):
         if direction == "N":
@@ -249,7 +316,7 @@ class Board(object):
 
     # to do: add pathing algo, to compute real distance.
     def get_distance(self, cell1, cell2):
-        return math.fabs(cell1.x - cell2.x) + math.fabs(cell1.y - cell2.y)
+        return abs(cell1.x - cell2.x) + abs(cell1.y - cell2.y)
 
     def print_board(self):
         for line in self.map:
@@ -317,6 +384,8 @@ board = Board(
     my_ship=my_ship,
     enemy_ship=enemy_ship
 )
+my_ship.board = board
+enemy_ship.board = board
 choose_starting_cell(my_ship, board)
 
 # game loop
@@ -329,7 +398,7 @@ while True:
     my_ship_cell.visit()
     enemy_orders = turn_data['enemy_orders']
     enemy_ship.do_actions(enemy_orders)
-    enemy_ship.update_possible_cells(board)
+    print_log("possible cells at end of round: " + str(len(enemy_ship.possible_cells)))
 
     best_action = my_ship.best_action(board)
     print(my_ship.do_actions(best_action))
