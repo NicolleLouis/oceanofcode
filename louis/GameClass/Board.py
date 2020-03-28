@@ -14,6 +14,13 @@ class Board(object):
                 cell_line.append(Cell(Position(x, y), char == "x"))
             self.map.append(cell_line)
 
+    def get_all_cells(self):
+        cells = []
+        for x in range(self.width):
+            for y in range(self.height):
+                cells.append(self.get_cell(Position(x, y)))
+        return cells
+
     def is_position_in_grid(self, position):
         if position.x < 0 or position.x >= self.width:
             return False
@@ -38,11 +45,10 @@ class Board(object):
             return False
 
     def enemy_not_in_sector(self, sector):
-        for x in range(self.width):
-            for y in range(self.height):
-                cell = self.get_cell(Position(x, y))
-                if cell.sector != sector:
-                    cell.can_be_enemy_position = False
+        cells = self.get_all_cells()
+        for cell in cells:
+            if cell.sector != sector:
+                cell.can_be_enemy_position = False
 
     def is_position_dead_end(self, position):
         available_direction = 0
@@ -71,18 +77,17 @@ class Board(object):
                         self.get_cell(start_position).cannot_be_enemy_start()
 
     def enemy_is_in_range(self, range_detection, attack_position):
-        for x in range(self.width):
-            for y in range(self.height):
-                cell = self.get_cell(Position(x, y))
-                if cell.position.get_distance(attack_position) > range_detection:
-                    cell.can_be_enemy_position = False
+        cells = self.get_all_cells()
+        for cell in cells:
+            if cell.position.get_distance(attack_position) > range_detection:
+                cell.can_be_enemy_position = False
 
     def compute_number_of_potential_positions(self):
         number_of_positions = 0
-        for x in range(self.width):
-            for y in range(self.height):
-                if self.get_cell(Position(x, y)).can_be_enemy_position:
-                    number_of_positions += 1
+        cells = self.get_all_cells()
+        for cell in cells:
+            if cell.can_be_enemy_position:
+                number_of_positions += 1
         return number_of_positions
 
     def update_enemy_current_position(self, delta_position):
@@ -99,15 +104,14 @@ class Board(object):
                     self.get_cell(current_position).can_be_enemy_position = can_be_position
 
     def reset_is_visited(self):
-        for x in range(self.width):
-            for y in range(self.height):
-                self.get_cell(Position(x=x, y=y)).reset_visit()
+        cells = self.get_all_cells()
+        for cell in cells:
+            cell.reset_visit()
 
     def reset_could_be_start(self):
-        for x in range(self.width):
-            for y in range(self.height):
-                cell = self.get_cell(Position(x=x, y=y))
-                cell.can_be_enemy_start = not cell.is_island
+        cells = self.get_all_cells()
+        for cell in cells:
+            cell.can_be_enemy_start = not cell.is_island
 
     def update_possible_start_position_after_silence_from_current_position(self, position):
         for x in range(-4, 4, 1):
@@ -125,18 +129,17 @@ class Board(object):
 
     def update_possible_position_after_silence(self):
         self.set_could_be_start_false()
-        for x in range(self.width):
-            for y in range(self.height):
-                cell_position = Position(x=x, y=y)
-                cell = self.get_cell(cell_position)
-                if cell.can_be_enemy_position:
-                    self.update_possible_start_position_after_silence_from_current_position(cell_position)
+        cells = self.get_all_cells()
+        for cell in cells:
+            if cell.can_be_enemy_position:
+                self.update_possible_start_position_after_silence_from_current_position(
+                    cell.position
+                )
 
     def set_could_be_start_false(self):
-        for x in range(self.width):
-            for y in range(self.height):
-                cell = self.get_cell(Position(x=x, y=y))
-                cell.can_be_enemy_start = False
+        cells = self.get_all_cells()
+        for cell in cells:
+            cell.can_be_enemy_start = False
 
     def update_board_torpedo_did_not_hit_in_position(self, torpedo_position, delta_position):
         torpedo_delta_range = [-1, 0, 1]

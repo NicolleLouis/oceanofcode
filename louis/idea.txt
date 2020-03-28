@@ -3,11 +3,11 @@
     - Peut pas traverser son chemin
 
 - Détection:
-    - Ma torpille l'a touché donc il est pas ailleurs
     - Ma torpille l'a touché à 2 donc il est pile la
     - Il a fait surface + je l'ai touché (Cas très particulier)
 
 - Déplacement:
+    - Calculer le nombre de position libre après mon move. Tirer la direction au hasard pondéré par ca.
     - 1 option viser une position
     - Quand je sais ou il est me diriger vers la
     - Me diriger vers le barycentre la ou il peut etre?
