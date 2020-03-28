@@ -1,5 +1,6 @@
 import random
 
+from Service import ServiceUtils
 from louis.constants import DIRECTIONS, MOVE, SILENCE
 from louis.Service import ServiceOrder
 
@@ -24,10 +25,15 @@ class ServiceMovement:
 
     @classmethod
     def chose_direction(cls, ship, board):
-        direction = cls.random_direction()
-        while not cls.is_move_possible_in_direction(ship, direction, board):
-            direction = cls.random_direction()
-        return direction
+        ponderated_random_decisions = []
+        for direction in DIRECTIONS:
+            if cls.is_move_possible_in_direction(ship, direction, board):
+                number_of_move_possible = board.get_number_of_potential_move_position_from_position(
+                    position=ship.get_position_after_move(direction)
+                )
+                for iteration in range(number_of_move_possible):
+                    ponderated_random_decisions.append(direction)
+        return random.choice(ponderated_random_decisions)
 
     @staticmethod
     def surface(board):

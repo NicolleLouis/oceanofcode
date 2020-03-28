@@ -8,7 +8,7 @@ class Cell(object):
         self.is_visited = False
         self.can_be_enemy_start = not is_island
         self.can_be_enemy_position = not is_island
-        self.is_in_range = False
+        self.is_in_move_range = False
         self.sector = self.position.get_sector()
 
     def has_been_visited(self):

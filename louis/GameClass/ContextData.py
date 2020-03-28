@@ -80,16 +80,12 @@ class ContextData(object):
             self.enemy_was_damaged = None
 
     def enemy_was_hit_last_turn(self, enemy_ship):
-        initial_count = enemy_ship.enemy_board.compute_number_of_potential_positions()
-
         last_turn_attack_order = ServiceOrder.get_attack_order(self.last_turn_own_orders)
         last_turn_attack_position = ServiceOrder.extract_position_from_attack_order(last_turn_attack_order)
         enemy_ship.enemy_was_in_range(
             range_detection=1,
             detection_position=last_turn_attack_position
         )
-        final_count = enemy_ship.enemy_board.compute_number_of_potential_positions()
-        ServiceUtils.print_log("From: {} to: {}".format(initial_count, final_count))
 
     def analyse_enemy_damage(self, enemy_ship):
         if self.enemy_was_damaged:

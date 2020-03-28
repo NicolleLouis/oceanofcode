@@ -14,6 +14,34 @@ class Board(object):
                 cell_line.append(Cell(Position(x, y), char == "x"))
             self.map.append(cell_line)
 
+    def compute_is_in_move_range(self, cell):
+        if (not cell.is_in_move_range) and cell.is_valid_for_move():
+            cell.is_in_move_range = True
+            neighbours = self.get_neighbours(cell)
+            for neighbour in neighbours:
+                self.compute_is_in_move_range(neighbour)
+
+    def get_number_of_potential_move_position_from_position(self, position):
+        self.set_is_in_move_range_false()
+        # Beware we are entering recursions
+        self.compute_is_in_move_range(self.get_cell(position))
+        number_of_move_position = self.compute_number_of_move_position_in_range()
+        self.set_is_in_move_range_false()
+        return number_of_move_position
+
+    def get_neighbours(self, cell):
+        neighbours = []
+        for (x, y) in [
+            (-1, 0),
+            (1, 0),
+            (0, -1),
+            (0, 1)
+        ]:
+            neighbour_position = Position(x, y).add_position(cell.position)
+            if bool(self.get_cell(neighbour_position)):
+                neighbours.append(self.get_cell(neighbour_position))
+        return neighbours
+
     def get_all_cells(self):
         cells = []
         for x in range(self.width):
@@ -90,6 +118,14 @@ class Board(object):
                 number_of_positions += 1
         return number_of_positions
 
+    def compute_number_of_move_position_in_range(self):
+        number_of_move_positions = 0
+        cells = self.get_all_cells()
+        for cell in cells:
+            if cell.is_in_move_range:
+                number_of_move_positions += 1
+        return number_of_move_positions
+
     def update_enemy_current_position(self, delta_position):
         for x in range(self.width):
             for y in range(self.height):
@@ -140,6 +176,11 @@ class Board(object):
         cells = self.get_all_cells()
         for cell in cells:
             cell.can_be_enemy_start = False
+
+    def set_is_in_move_range_false(self):
+        cells = self.get_all_cells()
+        for cell in cells:
+            cell.is_in_move_range = False
 
     def update_board_torpedo_did_not_hit_in_position(self, torpedo_position, delta_position):
         torpedo_delta_range = [-1, 0, 1]
