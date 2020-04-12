@@ -2,7 +2,7 @@ import math
 import random
 import sys
 
-# add touched or not with torpedo, and reaugment torpedo frequency, remove start cell bs, use only current cells, as well from silence, remove dx, dy, understand next position when taking shooting in coni
+# add touched or not with torpedo, and reaugment torpedo frequency, as well from silence, understand next position when taking shooting in consideration
 
 directions = ["E", "S", "W", "N"]
 
@@ -17,9 +17,7 @@ class Ship(object):
         self.is_my_ship = is_my_ship
         self.board = []
 
-    def get_possible_silences(self, board):
-        # blockers will define maximum reach of the silence. By definition <= 4
-        # TODO: check if we don't have issues in order of interpretation with MOVE + SILENCE
+    def get_possible_silence_blockers_from_path(self, board):
         blocker_north = 5
         blocker_east = 5
         blocker_south = 5
@@ -41,21 +39,31 @@ class Ship(object):
                 else:
                     blocker_west = min(blocker_west, -previous_x)
 
-        # if we are sure of his position, let's use it
-        if(len(self.possible_cells) == 1):
-            for dx in range(-4,5):
-                if board.get_cell(self.x + dx, self.y).is_island:
-                    if dx > 0:
-                        blocker_east = min(blocker_east, dx)
-                    else:
-                        blocker_west = min(blocker_west, -dx)
+        return [blocker_north, blocker_south, blocker_east, blocker_west]
 
-            for dy in range(-4,5):
-                if board.get_cell(self.x, self.y + dy).is_island:
-                    if dy > 0:
-                        blocker_south = min(blocker_south, dy)
-                    else:
-                        blocker_north = min(blocker_north, -dy)
+
+    def get_possible_silences_from_cell(self, board, cell, blockers):
+        # blockers will define maximum reach of the silence. By definition <= 4
+        # TODO: check if we don't have issues in order of interpretation with MOVE + SILENCE
+
+        blocker_north = blockers[0]
+        blocker_south = blockers[1]
+        blocker_east = blockers[2]
+        blocker_west = blockers[3]
+
+        for dx in range(-4,5):
+            if board.get_cell(cell.x + dx, cell.y).is_island:
+                if dx > 0:
+                    blocker_east = min(blocker_east, dx)
+                else:
+                    blocker_west = min(blocker_west, -dx)
+
+        for dy in range(-4,5):
+            if board.get_cell(cell.x, cell.y + dy).is_island:
+                if dy > 0:
+                    blocker_south = min(blocker_south, dy)
+                else:
+                    blocker_north = min(blocker_north, -dy)
 
         print_log("blocker north:" + str(blocker_north))
         print_log("blocker south:" + str(blocker_south))
@@ -74,6 +82,14 @@ class Ship(object):
 
         return possible_silences
 
+    def get_possible_silences(self, board):
+        possible_silences = []
+        blockers = self.get_possible_silence_blockers_from_path(board)
+        for cell in self.possible_cells:
+            possible_silences.append(self.get_possible_silences_from_cell(board, cell, blockers))
+        return possible_silences
+
+
     def get_vector_translated_cells(self, cells_array, vector, board):
         translated_cells_array = []
         for cell in cells_array:
@@ -91,6 +107,16 @@ class Ship(object):
         self.possible_cells = list(dict.fromkeys(possible_cells))
         for cell in self.possible_cells:
             print_log("possible enemy position after silence: " + str(cell.x) + " " + str(cell.y))
+
+    def possible_cells_after_silence_from_cell(self, board, start_cell):
+        possible_cells = []
+        for vector in self.get_possible_silences(board):
+            possible_cells += self.get_vector_translated_cells(self.possible_cells, vector, board)
+        # remove duplicates
+        self.possible_cells = list(dict.fromkeys(possible_cells))
+        for cell in self.possible_cells:
+            print_log("possible enemy position after silence: " + str(cell.x) + " " + str(cell.y))
+
 
     def do_actions(self, actions):
         for action in actions.split('|'):
