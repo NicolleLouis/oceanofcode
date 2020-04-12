@@ -86,7 +86,9 @@ class Ship(object):
         possible_silences = []
         blockers = self.get_possible_silence_blockers_from_path(board)
         for cell in self.possible_cells:
-            possible_silences.append(self.get_possible_silences_from_cell(board, cell, blockers))
+            possible_silences_from_cell = self.get_possible_silences_from_cell(board, cell, blockers)
+            for vector in possible_silences_from_cell:
+                possible_silences.append(vector)
         return possible_silences
 
 
