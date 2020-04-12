@@ -110,16 +110,6 @@ class Ship(object):
         for cell in self.possible_cells:
             print_log("possible enemy position after silence: " + str(cell.x) + " " + str(cell.y))
 
-    def possible_cells_after_silence_from_cell(self, board, start_cell):
-        possible_cells = []
-        for vector in self.get_possible_silences(board):
-            possible_cells += self.get_vector_translated_cells(self.possible_cells, vector, board)
-        # remove duplicates
-        self.possible_cells = list(dict.fromkeys(possible_cells))
-        for cell in self.possible_cells:
-            print_log("possible enemy position after silence: " + str(cell.x) + " " + str(cell.y))
-
-
     def do_actions(self, actions):
         for action in actions.split('|'):
             if "MOVE" in action:
