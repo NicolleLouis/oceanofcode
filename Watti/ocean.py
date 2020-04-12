@@ -2,6 +2,8 @@ import math
 import random
 import sys
 
+# add touched or not with torpedo, and reaugment torpedo frequency, remove start cell bs, use only current cells, as well from silence, remove dx, dy, understand next position when taking shooting in coni
+
 directions = ["E", "S", "W", "N"]
 
 class Ship(object):
@@ -9,10 +11,7 @@ class Ship(object):
     def __init__(self, is_my_ship):
         self.x = 0
         self.y = 0
-        self.possible_start_cells = []
         self.possible_cells = []
-        self.dx = 0
-        self.dy = 0
         self.torpedo_cooldown = -1
         self.known_path = []
         self.is_my_ship = is_my_ship
@@ -85,12 +84,10 @@ class Ship(object):
         return translated_cells_array
 
     def update_possible_cells_after_silence(self, board):
-        possible_start_cells = []
         possible_cells = []
         for vector in self.get_possible_silences(board):
             possible_cells += self.get_vector_translated_cells(self.possible_cells, vector, board)
         # remove duplicates
-        self.possible_start_cells = list(dict.fromkeys(possible_cells))
         self.possible_cells = list(dict.fromkeys(possible_cells))
         for cell in self.possible_cells:
             print_log("possible enemy position after silence: " + str(cell.x) + " " + str(cell.y))
@@ -100,25 +97,23 @@ class Ship(object):
             if "MOVE" in action:
                 if "MOVE N" in action:
                     self.y -= 1
-                    self.dy -= 1
                     self.known_path.insert(0, [0,-1])
+                    self.update_possible_cells_after_move(self.board, 0, -1)
 
                 if "MOVE E" in action:
                     self.x += 1
-                    self.dx += 1
                     self.known_path.insert(0, [1,0])
+                    self.update_possible_cells_after_move(self.board, 1, 0)
 
                 if "MOVE S" in action:
                     self.y += 1
-                    self.dy += 1
                     self.known_path.insert(0, [0,1])
+                    self.update_possible_cells_after_move(self.board, 0, 1)
 
                 if "MOVE W" in action:
                     self.x -= 1
-                    self.dx -= 1
                     self.known_path.insert(0, [-1,0])
-
-                self.update_possible_cells_after_move(self.board)
+                    self.update_possible_cells_after_move(self.board, -1, 0)
 
             if "SURFACE" in action:
                 self.known_path = []
@@ -130,8 +125,6 @@ class Ship(object):
                 print_log("POSSIBLE CELLS: " + str(len(self.possible_cells)))
                 self.update_possible_cells_after_silence(self.board)
                 print_log("SILENCE DETECTED, POSSIBLE CELLS: " + str(len(self.possible_cells)))
-                self.dx = 0
-                self.dy = 0
                 self.known_path = []
 
             if "TORPEDO" in action and not "MOVE" in action:
@@ -140,20 +133,15 @@ class Ship(object):
                 print_log(len(self.possible_cells))
                 #if we do not copy it it will screw it up as we work on the iterable
                 possible_cells_to_remove = []
-                possible_start_cell_to_remove = []
                 for cell in self.possible_cells:
                     distance_to_cell = self.board.get_distance(cell, cell_shot_at)
                     print_log(cell)
                     # he can only fire at distance 4 maximum
                     if distance_to_cell > 4:
                         print_log("cell to remove: " + str(cell.x) + " " + str(cell.y) + " distance: " + str(distance_to_cell))
-                        corresponding_start_cell = board.get_cell_from_vector(cell, -self.dx, -self.dy)
-                        possible_start_cell_to_remove.append(corresponding_start_cell)
                         possible_cells_to_remove.append(cell)
                 for cell in possible_cells_to_remove:
                     self.possible_cells.remove(cell)
-                for cell in possible_start_cell_to_remove:
-                    self.possible_start_cells.remove(cell)
 
             # if we are sure of his position, let's use it
             if len(self.possible_cells) == 1:
@@ -183,7 +171,7 @@ class Ship(object):
             # we don't shoot next to us unless we're sure to hit them
             if self.torpedo_cooldown == 0\
                 and ((distance_to_cell == 1 and len(board.enemy_ship.possible_cells)==1)\
-                    or (distance_to_cell <= 4 and distance_to_cell > 1)\
+                    or (distance_to_cell <= 4 and distance_to_cell > 1 and len(board.enemy_ship.possible_cells)<=10)\
                 ):
                     return "TORPEDO " + str(cell.x) + " " + str(cell.y)
         return "DUNNO"
@@ -195,29 +183,16 @@ class Ship(object):
         else:
             return best_attack
 
-    def update_possible_start_cells(self, board):
-        dx = self.dx
-        dy = self.dy
-        for cell_line in board.map:
-            for cell in cell_line:
-                if board.get_cell_from_vector(cell, dx, dy).is_island:
-                    try:
-                        self.possible_start_cells.remove(cell)
-                    # out of bounds cell will raise exceptions
-                    except:
-                        pass
+# TODO: make it work with current cells
+    def update_possible_cells_after_move(self, board, dx, dy):
+        new_possible_cells = []
+        for cell in self.possible_cells:
+            new_possible_cell = board.get_cell_from_vector(cell, dx, dy)
+            # if it is an island dont keep
+            if not new_possible_cell.is_island:
+                new_possible_cells.append(new_possible_cell)
 
-    def update_possible_cells_after_move(self, board):
-        dx = self.dx
-        dy = self.dy
-        self.update_possible_start_cells(board)
-        possible_cells = []
-        for cell_line in board.map:
-            for cell in cell_line:
-                if cell in self.possible_start_cells:
-                    #print_log("start :" + str(cell.x) + " " + str(cell.y))
-                    possible_cells.append(board.get_cell_from_vector(cell, dx, dy))
-        self.possible_cells = possible_cells
+        self.possible_cells = new_possible_cells
         if not self.is_my_ship:
             for cell in self.possible_cells:
                 print_log("possible enemy position: " + str(cell.x) + " " + str(cell.y))
@@ -259,8 +234,8 @@ class Board(object):
                 if char == "x":
                     pass
                 else:
-                    my_ship.possible_start_cells.append(cell)
-                    enemy_ship.possible_start_cells.append(cell)
+                    my_ship.possible_cells.append(cell)
+                    enemy_ship.possible_cells.append(cell)
             self.map.append(cell_line)
 
 
