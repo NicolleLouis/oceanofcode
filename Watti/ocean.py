@@ -5,6 +5,7 @@ import sys
 # add touched or not with torpedo, and reaugment torpedo frequency, use silence, understand next position when taking shooting in consideration, add pathing to shoot in range
 
 directions = ["E", "S", "W", "N"]
+direction_vectors = [[1, 0], [0, 1], [-1, 0], [0, -1]]
 
 class Ship(object):
     # TODO: manage path of enemy ship to rule out silence possibilities
@@ -180,11 +181,32 @@ class Ship(object):
                 possible_moves.append("MOVE " + direction + " " + weapon)
         return possible_moves
 
+    def best_silence(self, board):
+        # TODO untweak for not noobs who counter silence 0
+        possible_silences = self.get_possible_silences(board)
+        best_silence_vector = ""
+        best_silence_norm = -1
+        for vector in possible_silences:
+            vec_norm = abs(vector[0]) + abs(vector[1])
+            if vec_norm > best_silence_norm:
+                best_silence_vector = vector
+                best_silence_norm = vec_norm
+        best_silence_dir = board.get_direction_from_vector(best_silence_vector)
+        if best_silence_norm > 0:
+            best_silence_vector = [best_silence_vector[0]/best_silence_norm, best_silence_vector[1]/best_silence_norm]
+        return ["SILENCE " + str(best_silence_dir) + " " + str(best_silence_norm), best_silence_vector, best_silence_norm]
+
     def best_move_action(self, board):
         possible_moves = self.possible_moves(board)
         silence_move = ""
         if self.silence_cooldown == 0:
-            silence_move = " | SILENCE N 0"
+            best_silence = self.best_silence(board)
+            best_silence_vector = best_silence[1]
+            # need to update visited cells with silence
+            for i in range(best_silence[2]):
+                self.known_path.insert(0, best_silence_vector)
+                board.get_cell(int(self.x + i * best_silence_vector[0]), int(self.y + i * best_silence_vector[1])).visit()
+            silence_move = " | " + best_silence[0]
         if len(possible_moves) > 0:
             return possible_moves[0] + silence_move
         else:
@@ -319,6 +341,22 @@ class Board(object):
     def get_distance(self, cell1, cell2):
         return abs(cell1.x - cell2.x) + abs(cell1.y - cell2.y)
 
+    def get_direction_from_vector(self, vector):
+        direction = "N"
+        norm_vector = self.get_norm_vector(vector)
+        if norm_vector > 0:
+            vector[0] /= norm_vector
+            vector[1] /= norm_vector
+            index = direction_vectors.index(vector)
+            print_log("index vector: ")
+            print_log(index)
+            direction = directions[index]
+        return direction
+
+    def get_norm_vector(self, vector):
+        return abs(vector[0]) + abs(vector[1])
+
+
     def print_board(self):
         for line in self.map:
             line_string = ""
@@ -386,6 +424,8 @@ while True:
     print_log(enemy_orders)
     my_ship_cell = board.get_cell(my_ship.x, my_ship.y)
     my_ship_cell.visit()
+    # TODO to change when want to know how much enemy knows
+    my_ship.possible_cells = [my_ship_cell]
 
     enemy_ship.do_actions(enemy_orders)
     print_log("updated based on orders")
