@@ -2,7 +2,7 @@ import math
 import random
 import sys
 
-# add touched or not with torpedo, and reaugment torpedo frequency, as well from silence, understand next position when taking shooting in consideration
+# add touched or not with torpedo, and reaugment torpedo frequency, use silence, understand next position when taking shooting in consideration, add pathing to shoot in range
 
 directions = ["E", "S", "W", "N"]
 
@@ -13,6 +13,8 @@ class Ship(object):
         self.y = 0
         self.possible_cells = []
         self.torpedo_cooldown = -1
+        self.silence_cooldown = -1
+        self.mine_cooldown = -1
         self.known_path = []
         self.is_my_ship = is_my_ship
         self.board = []
@@ -65,11 +67,6 @@ class Ship(object):
                 else:
                     blocker_north = min(blocker_north, -dy)
 
-        print_log("blocker north:" + str(blocker_north))
-        print_log("blocker south:" + str(blocker_south))
-        print_log("blocker east:" + str(blocker_east))
-        print_log("blocker west:" + str(blocker_west))
-
         possible_silences = []
         for x in range(blocker_east):
             possible_silences.append([x, 0])
@@ -107,8 +104,8 @@ class Ship(object):
             possible_cells += self.get_vector_translated_cells(self.possible_cells, vector, board)
         # remove duplicates
         self.possible_cells = list(dict.fromkeys(possible_cells))
-        for cell in self.possible_cells:
-            print_log("possible enemy position after silence: " + str(cell.x) + " " + str(cell.y))
+        # for cell in self.possible_cells:
+        #     print_log("possible enemy position after silence: " + str(cell.x) + " " + str(cell.y))
 
     def do_actions(self, actions):
         for action in actions.split('|'):
@@ -140,9 +137,9 @@ class Ship(object):
 
             if "SILENCE" in action and not "MOVE" in action:
                 assert len(board.map) > 0
-                print_log("POSSIBLE CELLS: " + str(len(self.possible_cells)))
+                print_log("1d")
                 self.update_possible_cells_after_silence(self.board)
-                print_log("SILENCE DETECTED, POSSIBLE CELLS: " + str(len(self.possible_cells)))
+                print_log("2d")
                 self.known_path = []
 
             if "TORPEDO" in action and not "MOVE" in action:
@@ -153,7 +150,6 @@ class Ship(object):
                 possible_cells_to_remove = []
                 for cell in self.possible_cells:
                     distance_to_cell = self.board.get_distance(cell, cell_shot_at)
-                    print_log(cell)
                     # he can only fire at distance 4 maximum
                     if distance_to_cell > 4:
                         print_log("cell to remove: " + str(cell.x) + " " + str(cell.y) + " distance: " + str(distance_to_cell))
@@ -168,17 +164,29 @@ class Ship(object):
 
         return actions
 
+    def weapon_to_charge(self):
+        weapon = "TORPEDO"
+        if self.torpedo_cooldown == 0:
+            weapon = "SILENCE"
+            if self.silence_cooldown == 0:
+                weapon = "MINE"
+        return weapon
+
     def possible_moves(self, board):
         possible_moves = []
+        weapon = self.weapon_to_charge()
         for direction in directions:
             if board.get_cell_in_direction(self.x, self.y, direction).is_cell_valid():
-                possible_moves.append("MOVE " + direction + " TORPEDO")
+                possible_moves.append("MOVE " + direction + " " + weapon)
         return possible_moves
 
     def best_move_action(self, board):
         possible_moves = self.possible_moves(board)
+        silence_move = ""
+        if self.silence_cooldown == 0:
+            silence_move = " | SILENCE N 0"
         if len(possible_moves) > 0:
-            return possible_moves[0]
+            return possible_moves[0] + silence_move
         else:
             return "SURFACE"
 
@@ -211,9 +219,9 @@ class Ship(object):
                 new_possible_cells.append(new_possible_cell)
 
         self.possible_cells = new_possible_cells
-        if not self.is_my_ship:
-            for cell in self.possible_cells:
-                print_log("possible enemy position: " + str(cell.x) + " " + str(cell.y))
+        # if not self.is_my_ship:
+        #     for cell in self.possible_cells:
+        #         print_log("possible enemy position: " + str(cell.x) + " " + str(cell.y))
 
 
     def __str__(self):
@@ -321,25 +329,6 @@ class Board(object):
 def print_log(log):
     print(log, file=sys.stderr)
 
-def read_turn_data():
-    x, y, my_life, opp_life, torpedo_cooldown, \
-    sonar_cooldown, silence_cooldown, \
-    mine_cooldown = [int(i) for i in input().split()]
-    sonar_result = input()
-    enemy_orders = input()
-    return {
-        "x": x,
-        "y": y,
-        "my_life": my_life,
-        "opp_life": opp_life,
-        "torpedo_cooldown": torpedo_cooldown,
-        "sonar_cooldown": sonar_cooldown,
-        "silence_cooldown": silence_cooldown,
-        "sonar_result": sonar_result,
-        "enemy_orders": enemy_orders,
-    }
-
-
 def read_global_data():
     width, height, my_id = [int(i) for i in input().split()]
     lines = []
@@ -383,15 +372,26 @@ choose_starting_cell(my_ship, board)
 
 # game loop
 while True:
-    turn_data = read_turn_data()
-    my_ship.x = turn_data['x']
-    my_ship.y = turn_data['y']
-    my_ship.torpedo_cooldown = turn_data['torpedo_cooldown']
+    print_log("start read")
+    my_ship.x, my_ship.y, my_life, opp_life, my_ship.torpedo_cooldown, \
+    my_ship.sonar_cooldown, my_ship.silence_cooldown, \
+    my_ship.mine_cooldown = [int(i) for i in input().split()]
+    print_log("read turn data1")
+    sonar_result = input()
+    print_log("read turn data2")
+    print_log(sonar_result)
+    enemy_orders = input()
+    print_log("read turn data3")
+    print_log("enemy orders:")
+    print_log(enemy_orders)
     my_ship_cell = board.get_cell(my_ship.x, my_ship.y)
     my_ship_cell.visit()
-    enemy_orders = turn_data['enemy_orders']
+
     enemy_ship.do_actions(enemy_orders)
+    print_log("updated based on orders")
     print_log("possible cells at end of round: " + str(len(enemy_ship.possible_cells)))
 
     best_action = my_ship.best_action(board)
+    print_log(best_action)
     print(my_ship.do_actions(best_action))
+    print_log("played")
